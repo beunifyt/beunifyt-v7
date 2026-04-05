@@ -15,6 +15,11 @@ import { _renderShell, cacheEL, goTab, renderHdr, _applyTheme, cycleTheme, toggl
 import { injectModals } from '../core/modals.js';
 import { renderCamposSubtab, cycleCampo, saveCamposCfg, resetCamposCfg, addCustomCampo } from '../core/fields.js';
 
+// ─── MODAL STATE VARIABLES ──────────────────────────────
+let evPuertasTemp=[], agReqsTemp=[], _recHallsTemp=[], _recPuertasTemp=[];
+let editIngId=null, editMovId=null, editCondId=null, editAgId=null;
+let editEvId=null, editRecId=null, editUserId=null, editEEId=null, editLNId=null;
+let blkOverrideData=null, _ingSource="ingresos", CU=null, pendingDelFn=null, _lastMsgCount=0;
 // ─── TAB MODULES ────────────────────────────────────────────────────
 import { renderDash } from '../tabs/dash.js';
 import { renderIngresos } from '../tabs/ingresos.js';
@@ -487,11 +492,6 @@ window.dlTemplateRecintos = () => { _xlsxWrite([['Nombre','Ciudad','País','Hall
 window.dlTemplateEventos = () => { _xlsxWrite([['Nombre','Inicio','Fin','Recinto','Ciudad']], 'Eventos', 'plantilla_eventos.xlsx'); };
 window.dlTemplateUsuarios = () => { _xlsxWrite([['Nombre','Email','Rol','PIN','Idioma']], 'Usuarios', 'plantilla_usuarios.xlsx'); };
 // ─── MODAL VARIABLES ─────────────────────────────
-const EV_CAMPOS=['posicion','llamador','ref','empresa','hall','stand','puertaHall','montador','expositor','nombre','apellido','pasaporte','telefono','email','comentario','horario','fechaNacimiento','pais','remolque','tipoVehiculo','descargaTipo'];
-let CU=null,pendingDelFn=null,blkOverrideData=null,_lastMsgCount=0;
-let editIngId=null,editAgId=null,editCondId=null,editMovId=null,editEvId=null,editEEId=null,editLNId=null,editUserId=null;
-let CUR_LANG='es';
-let _recHallsTemp=[],_recPuertasTemp=[],editRecId=null;
 
 // ─── MODAL SAVE/HELPER FUNCTIONS ─────────────────
 function renderTipoVehButtons(ev){
