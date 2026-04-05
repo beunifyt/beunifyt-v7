@@ -2,6 +2,7 @@
 import { initFirestore } from './firestore.js';
 import { initAuth }      from './auth.js';
 import { AppState }      from './state.js';
+import './langs.js';  // Load language system globally
 
 const FIREBASE_CONFIG = window.BEU_CONFIG || {
   apiKey:            'AIzaSyBKMfHEcnRAJJ9zotIXu3hluFpyjwQDfq4',
