@@ -55,6 +55,12 @@ function togglePosAuto() {
   toast((_posAutoOn ? '🔢 Posición AUTO ON' : 'Posición manual'), 'var(--blue)');
 }
 
+// ─── MODAL STATE VARIABLES ──────────────────────────────────────────
+let editIngId = null, editMovId = null, editCondId = null, editAgId = null;
+let editEvId = null, editRecId = null, editUserId = null;
+let blkOverrideData = null, _ingSource = 'ingresos';
+let agReqsTemp = [], evPuertasTemp = [], _recHallsTemp = [], _recPuertasTemp = [];
+
 // ─── MODAL FUNCTIONS (shared across tabs) ───────────────────────────
 function openIngModal(i){
   editIngId=i?i.id:null;blkOverrideData=null;
@@ -235,18 +241,6 @@ function showCondDetalle(id){
   const c=DB.conductores.find(x=>x.id===id);if(!c)return;
   toast('👤 '+c.nombre+' '+c.apellido+' · '+c.matricula+' · '+c.empresa,'var(--blue)',4000);
 }
-
-// ─── EXPORT FUNCTIONS ───────────────────────────────────────────────
-function _xlsxWrite(data, sheetName, filename) {
-  const XLSX = window.XLSX;
-  if (!XLSX) { toast('XLSX no disponible','var(--red)'); return; }
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
-  XLSX.writeFile(wb, filename);
-  toast('📋 Plantilla descargada', 'var(--blue)');
-}
-
 
 // ─── EXPORT FUNCTIONS ───────────────────────────────────────────────
 function _xlsxWrite(data, sheetName, filename) {
@@ -451,8 +445,6 @@ window._saveEmpresa = (eid) => {
 };
 
 // Extra compat aliases
-window.removeHall = removeHall;
-window.cycleEvCampo = typeof cycleEvCampo !== 'undefined' ? cycleEvCampo : (k) => { const el=document.getElementById('evF'+k); if(!el)return; const cur=el.dataset.val||'show'; const next={show:'required',required:'off',off:'show'}[cur]||'show'; el.dataset.val=next; const colors={off:['var(--border)','var(--bg2)','var(--text4)','✕'],show:['var(--blue)','var(--blue)','#fff','✓'],required:['var(--red)','var(--red)','#fff','★']}; const c=colors[next]; el.style.border='1px solid '+c[0]; el.style.background=c[1]; el.style.color=c[2]; el.style.opacity=next==='off'?'.4':'1'; el.innerHTML=c[3]+' '+k; };
 window.cleanTab = (tab) => vaciarTab(tab);
 window.vaciarTab = vaciarTab;
 window.canImport = canImport;
@@ -492,7 +484,411 @@ try { if(localStorage.getItem('beu_pa')==='0') { import('../core/context.js').th
 // ─── ADDITIONAL WINDOW ALIASES (validator fix) ──────────────────────
 window.exportExcel = exportExcel;
 window.importExcel = importExcel;
+window.cycleEvCampo = typeof cycleEvCampo !== 'undefined' ? cycleEvCampo : () => {};
+window.removeHall = removeHall;
 window.dlTemplateEmpresas = () => { _xlsxWrite([['Nombre','CIF','Contacto','Telefono','Email']], 'Empresas', 'plantilla_empresas.xlsx'); };
 window.dlTemplateRecintos = () => { _xlsxWrite([['Nombre','Ciudad','País','Halls (;)']], 'Recintos', 'plantilla_recintos.xlsx'); };
 window.dlTemplateEventos = () => { _xlsxWrite([['Nombre','Inicio','Fin','Recinto','Ciudad']], 'Eventos', 'plantilla_eventos.xlsx'); };
 window.dlTemplateUsuarios = () => { _xlsxWrite([['Nombre','Email','Rol','PIN','Idioma']], 'Usuarios', 'plantilla_usuarios.xlsx'); };
+// ─── MODAL VARIABLES ─────────────────────────────
+const EV_CAMPOS=['posicion','llamador','ref','empresa','hall','stand','puertaHall','montador','expositor','nombre','apellido','pasaporte','telefono','email','comentario','horario','fechaNacimiento','pais','remolque','tipoVehiculo','descargaTipo'];
+let CU=null,curTab='dash',pendingDelFn=null,blkOverrideData=null,_lastMsgCount=0;
+let editIngId=null,editAgId=null,editCondId=null,editMovId=null,editEvId=null,editEEId=null,editLNId=null,editUserId=null;
+let CUR_LANG='es';
+let _recHallsTemp=[],_recPuertasTemp=[],editRecId=null;
+
+// ─── MODAL SAVE/HELPER FUNCTIONS ─────────────────
+function renderTipoVehButtons(ev){
+  // Si el evento tiene tipoVehLabels usa esos, sino usa TV_FIRA por defecto (Fira GV)
+  const labels=ev?.tipoVehLabels||TV_FIRA;
+  const wrap=document.getElementById('tipoVehBtns');if(!wrap)return;
+  wrap.innerHTML=Object.values(labels).map(t=>
+    `<button type="button" class="btn btn-sm btn-gh" id="${t.id}" onclick="setToggle('fiTipoVeh','${t.val}')" style="flex:1">${t.lbl}</button>`
+  ).join('');
+  syncToggleButtons();
+}
+
+function closeOv(id){const el=document.getElementById(id);if(el)el.classList.remove('open');}
+
+function applyIngFormFieldVisibility(){
+  const ck=_getCamposKey(_ingSource==='ingresos2'?'ingresos2':'ingresos');
+  Object.entries(_FMAP).forEach(([k,wid])=>{
+    const el=document.getElementById(wid);if(!el)return;
+    const cfg=DB.camposCfg?.[ck]?.current?.[k]??'show';
+    el.style.display=cfg==='off'?'none':'';
+    const lbl=el.querySelector('.flbl');if(!lbl)return;
+    const old=lbl.querySelector('.freq-auto');if(old)old.remove();
+    if(cfg==='required'){const s=document.createElement('span');s.className='freq freq-auto';s.textContent=' *';lbl.appendChild(s);}
+  });
+}
+
+function getFormEvento(){const sel=document.getElementById('fiEventoId');if(sel&&sel.value)return DB.eventos.find(e=>e.id===sel.value)||null;return getActiveEvent();}
+
+function onFormEventoChange(){const ev=getFormEvento();renderTipoVehButtons(ev);renderHallTags();const inp=document.getElementById('fiHallInput');if(inp)inp.value='';const res=document.getElementById('fiHallResults');if(res)res.classList.remove('open');fillPuertaSelect();}
+
+function applyEventFieldVisibility(){
+  const actEvs=getActiveEvents();
+  // Populate evento selector
+  const selWrap=document.getElementById('fiEventoSel');
+  const selEl=document.getElementById('fiEventoId');
+  if(selEl){
+    const curVal=selEl.value;
+    const allEvs2=DB.eventos||[];
+    selEl.innerHTML='<option value="">— Sin evento —</option>'+allEvs2.map(e=>`<option value="${e.id}" ${(curVal||DB.defaultEventId||'')===(e.id)?'selected':''}>${e.ico||'📋'} ${e.nombre}</option>`).join('');
+    if(!curVal&&DB.defaultEventId)selEl.value=DB.defaultEventId;
+    if(selWrap)selWrap.style.display=(allEvs2.length>0&&!DB.activeEventId)?'block':'none';
+  }
+  const bar=document.getElementById('fiEventoBar');if(bar)bar.style.display='none';
+  renderTipoVehButtons(getFormEvento());
+  // Autocompletar pos según colección y reglas
+  const posEl=document.getElementById('fiPos');
+  if(posEl&&!posEl.value){
+    const today=new Date().toISOString().slice(0,10);
+    const ev=getFormEvento();
+    let nextPos;
+    if(_ingSource==='ingresos2'){
+      if(ev?.acumularPos)nextPos=(DB.ingresos2||[]).filter(i=>i.eventoId===ev?.id).length+1;
+      else nextPos=(DB.ingresos2||[]).filter(i=>i.entrada?.startsWith(today)).length+1;
+    }else{
+      nextPos=DB.ingresos.filter(i=>i.entrada?.startsWith(today)).length+1;
+    }
+    posEl.placeholder='Auto ('+nextPos+')';
+  }
+}
+
+function fillLangIng(){const el=document.getElementById('fiLang');if(!el)return;el.innerHTML=Object.entries(LANGS).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join('');}
+
+function syncAgDescarga(v){
+  const cur=document.getElementById('agDescarga');if(cur)cur.value=v||'';
+  ['agDcHand','agDcFork'].forEach(id=>{
+    const b=document.getElementById(id);if(!b)return;
+    const bv=id==='agDcHand'?'mano':'maquinaria';
+    b.className='btn btn-sm '+(v===bv?'btn-p':'btn-gh');
+    b.style.opacity=v&&v!==bv?'.35':'1';
+  });
+}
+
+function syncToggleButtons(){const tv=document.getElementById('fiTipoVeh')?.value||'';const dc=document.getElementById('fiDescarga')?.value||'';const map={tvTrailer:'trailer',tvB:'semiremolque',tvA:'camion'};Object.entries(map).forEach(([btnId,v])=>{const b=document.getElementById(btnId);if(b){const active=tv===v;b.className='btn btn-sm '+(active?'btn-p':'btn-gh');b.style.opacity=tv&&!active?'.35':'1';}});const dmap={dcHand:'mano',dcFork:'maquinaria'};Object.entries(dmap).forEach(([btnId,v])=>{const b=document.getElementById(btnId);if(b){const active=dc===v;b.className='btn btn-sm '+(active?'btn-p':'btn-gh');b.style.opacity=dc&&!active?'.35':'1';}});}
+
+function fillPuertaSelect(){const sel=document.getElementById('fiPuerta');if(!sel)return;const ev=getActiveEvent();let puertas=ev?.puertas||[];if(!puertas.length&&ev?.recintoId){const r=(DB.recintos||[]).find(x=>x.id===ev.recintoId);if(r)puertas=r.puertas||[];}sel.innerHTML='<option value="">--</option>'+puertas.map(p=>`<option value="${p.nombre}">${p.nombre}</option>`).join('');}
+
+function updatePhrasePreview(){
+  // Phrase 2 - translate like phrase 1
+  const p2w=document.getElementById('fiPhrase2Wrap');
+  if(p2w){
+    const ev2=getActiveEvent();const dLang2=document.getElementById('fiLang')?.value||'es';const uLang2=CUR_LANG||'es';
+    if(ev2?.phrase2){
+      p2w.style.display='block';
+      const p2src=ev2.phrase2;
+      // Check if translation exists
+      if(!ev2.phrases2)ev2.phrases2={};
+      ev2.phrases2[uLang2]=p2src; // base language
+      const p2translated=ev2.phrases2[dLang2];
+      const dInfo2=LANGS_UI.find(l=>l.code===dLang2)||{flag:'',name:dLang2};
+      const uInfo2=LANGS_UI.find(l=>l.code===uLang2)||{flag:'🇪🇸',name:'Español'};
+      if(dLang2===uLang2){
+        document.getElementById('fiPhrase2Line').innerHTML=uInfo2.flag+' '+p2src;
+      }else if(p2translated){
+        document.getElementById('fiPhrase2Line').innerHTML=dInfo2.flag+' '+p2translated+'<br><span style="font-size:10px;color:var(--text3)">'+uInfo2.flag+' '+p2src+'</span>';
+      }else{
+        document.getElementById('fiPhrase2Line').innerHTML=dInfo2.flag+' <span style="color:#1d4ed8;font-style:italic;font-size:11px">traduciendo...</span><br><span style="font-size:10px;color:var(--text3)">'+uInfo2.flag+' '+p2src+'</span>';
+        freeTranslatePhrase2(p2src,uLang2,dLang2,dInfo2,ev2);
+      }
+    }else{p2w.style.display='none';}
+  }const wrap=document.getElementById('fiPhraseWrap');if(!wrap)return;const driverLang=document.getElementById('fiLang')?.value||'es';const uLang=CUR_LANG||'es';const ev=getActiveEvent();if(!ev||!ev.phrases){wrap.style.display='none';return;}const evPhrases=ev.phrases||{};const phraseUser=evPhrases[uLang]||evPhrases.es||'';if(!phraseUser){wrap.style.display='none';return;}wrap.style.display='block';const uInfo=LANGS_UI.find(l=>l.code===uLang)||{flag:'🇪🇸',name:'Español'};document.getElementById('fiPhraseUserLine').innerHTML=`🔔 ${uInfo.flag} ${phraseUser}`;const dLine=document.getElementById('fiPhraseDriverLine');if(driverLang===uLang){dLine.style.display='none';return;}const dInfo=LANGS_UI.find(l=>l.code===driverLang)||{flag:'',name:driverLang};const existing=evPhrases[driverLang];if(existing){dLine.style.display='block';dLine.innerHTML=`${dInfo.flag} ${existing}`;return;}dLine.style.display='block';dLine.innerHTML=`${dInfo.flag} <span style="color:#b45309;font-style:italic;font-size:11px">traduciendo...</span>`;freeTranslatePhrase(phraseUser,uLang,driverLang,dInfo,ev);}
+
+function canEditEvento(){return isSA()||hasPerm('canEditEvento');}
+
+function addRecHall(){const inp=document.getElementById('recHallInput');const v=(inp.value||'').trim().toUpperCase();if(!v)return;if(!_recHallsTemp.includes(v))_recHallsTemp.push(v);inp.value='';renderRecHalls();}
+
+function renderRecHalls(){const el=document.getElementById('recHallList');if(el)el.innerHTML=_recHallsTemp.map((h,i)=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:var(--r);background:var(--bll);border:1.5px solid #bfdbfe;font-size:12px;font-weight:700;color:var(--blue)">🏭 ${h}<button class="btn btn-danger btn-xs" style="padding:1px 4px;font-size:9px" onclick="_recHallsTemp.splice(${i},1);renderRecHalls()">✕</button></span>`).join('');}
+
+function addRecPuerta(){const nom=(document.getElementById('recPuertaNom').value||'').trim();if(!nom)return;_recPuertasTemp.push({nombre:nom,direccion:(document.getElementById('recPuertaDir').value||'').trim(),qr:(document.getElementById('recPuertaQR').value||'').trim()});document.getElementById('recPuertaNom').value='';document.getElementById('recPuertaDir').value='';document.getElementById('recPuertaQR').value='';renderRecPuertas();}
+
+function renderRecPuertas(){const el=document.getElementById('recPuertasList');if(el)el.innerHTML=_recPuertasTemp.map((p,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);font-size:12px"><span style="font-weight:700">🚪 ${p.nombre}</span>${p.direccion?`<span style="color:var(--text3)">📍 ${p.direccion}</span>`:''} ${p.qr?`<a href="${p.qr}" target="_blank" style="color:var(--blue);font-size:10px">🔗 QR</a>`:''}<button class="btn btn-danger btn-xs" onclick="_recPuertasTemp.splice(${i},1);renderRecPuertas()">✕</button></div>`).join('');}
+
+function saveRecinto(){
+  const nom=(document.getElementById('recNom').value||'').trim();if(!nom){toast('Nombre obligatorio','var(--red)');return;}
+  const r={id:editRecId||uid(),nombre:nom,ciudad:(document.getElementById('recCiudad').value||'').trim(),pais:(document.getElementById('recPais').value||'').trim(),halls:[..._recHallsTemp],puertas:[..._recPuertasTemp],atencion:{tel:(document.getElementById('recAtcTel').value||'').trim(),email:(document.getElementById('recAtcEmail').value||'').trim(),notas:(document.getElementById('recAtcNotas').value||'').trim()}};
+  if(editRecId)DB.recintos=DB.recintos.map(x=>x.id===editRecId?r:x);else DB.recintos.push(r);
+  saveDB();closeOv('mRecinto');renderRecintos();toast('✅ Recinto guardado');
+}
+
+function setMatTag(icon,name,empresa,src){
+  const tag=document.getElementById('fiMatTag');
+  if(!tag)return;
+  document.getElementById('fiMatTagIcon').textContent=icon;
+  document.getElementById('fiMatTagName').textContent=name+(empresa?' · '+empresa:'');
+  tag.style.display='flex';
+  // Solo mostrar botón "Guardar en conductores" si viene de historial (no ya es conductor)
+  const saveBtn=document.getElementById('fiMatTagSave');
+  if(saveBtn)saveBtn.style.display=(src==='ing'||src==='veh')?'inline-block':'none';
+}
+
+function saveMatAsChofer(){
+  const mat=(document.getElementById('fiMat')?.value||'').trim().toUpperCase();
+  if(!mat){toast('Matrícula requerida','var(--red)');return;}
+  // Verificar si ya existe
+  const exists=DB.conductores.find(cd=>cd.matricula===mat);
+  if(exists){
+    if(!confirm('⚠️ '+mat+' ya existe en conductores ('+exists.nombre+' '+exists.apellido+').\n¿Abrir para editar?'))return;
+    closeOv('mIng');
+    setTimeout(()=>openCondModal(exists),200);
+    return;
+  }
+  // Leer datos del formulario actual
+  const get=id=>(document.getElementById(id)?.value||'').trim();
+  const nom=get('fiNom'),ape=get('fiApe');
+  if(!nom&&!ape){toast('Rellena al menos nombre y apellido antes de guardar','var(--amber)');return;}
+  // Pre-llenar modal conductor con los datos del formulario
+  const prefill={
+    matricula:mat,
+    nombre:nom,apellido:ape,
+    empresa:get('fiEmp'),
+    remolque:get('fiRem'),
+    hall:_fiHalls[0]||'',
+    telPais:get('fiTelP')||'+34',
+    telefono:get('fiTel'),
+    email:get('fiEmail'),
+    tipoVehiculo:get('fiTipoVeh'),
+    pasaporte:get('fiPas'),
+    pais:get('fiPais'),
+    fechaNacimiento:get('fiFechaNac'),
+    fechaExpiracion:get('fiFechaExp'),
+    idioma:get('fiLang'),
+    notas:''
+  };
+  // Abrir modal conductor prellenado (sin cerrar el de ingreso)
+  openCondModalFromIng(prefill);
+}
+
+function clearMatField(){
+  const matEl=document.getElementById('fiMat');
+  if(matEl)matEl.value='';
+  const tag=document.getElementById('fiMatTag');if(tag)tag.style.display='none';
+  const res=document.getElementById('fiMatResults');if(res)res.classList.remove('open');
+  // Clear conductor-filled fields
+  ['fiRem','fiNom','fiApe','fiEmp','fiTelP','fiTel','fiEmail','fiPas','fiPais','fiFechaNac','fiFechaExp'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=el.id==='fiTelP'?'+34':'';});
+  document.getElementById('fiTipoVeh').value='';
+  document.getElementById('fiDescarga').value='';
+  syncToggleButtons();
+  _fiHalls=[];renderHallTags();
+  toast('🗑 Campos de conductor borrados','var(--text3)');
+}
+
+function saveIngreso(){
+  const mat=(document.getElementById('fiMat').value||'').trim().toUpperCase();if(!mat){toast('Matrícula obligatoria','var(--red)');return;}
+  const emp=(document.getElementById('fiEmp').value||'').trim(),hall=document.getElementById('fiHall').value,ev=getFormEvento();
+  if(fieldCfg('empresa')==='required'&&!emp){toast('Empresa obligatoria','var(--red)');return;}
+  if(fieldCfg('hall')==='required'&&!hall){toast('Hall obligatorio','var(--red)');return;}
+  const ln=checkBL(mat);if(ln&&!blkOverrideData){blkOverrideData={mat};showBlkAlert(ln,mat,true);return;}
+  blkOverrideData=null;_doSaveIng(mat,emp,hall,ev);
+}
+
+function onAgEventoChange(){
+  const evId=document.getElementById('agEvento').value;
+  const ev=evId?DB.eventos.find(e=>e.id===evId):null;
+  // Update hall dropdown to show only halls of this event/recinto
+  const agHSel=document.getElementById('agHall');
+  if(agHSel){
+    const halls=ev?.halls?.length?ev.halls:(ev?.recintoId?(DB.recintos||[]).find(r=>r.id===ev.recintoId)?.halls||[]:getRecintoHalls());
+    agHSel.innerHTML='<option value="">--</option>'+halls.map(h=>`<option value="${h}">${h}</option>`).join('');
+  }
+}
+
+function addReqAg(){const v=(document.getElementById('agReqInput').value||'').trim();if(!v)return;agReqsTemp.push(v);document.getElementById('agReqInput').value='';renderAgReqs();}
+
+function removeReqAg(i){agReqsTemp.splice(i,1);renderAgReqs();}
+
+function renderAgReqs(){const el=document.getElementById('agReqsList');if(el)el.innerHTML=agReqsTemp.map((r,i)=>`<span class="req-chip">${r}<button onclick="removeReqAg(${i})">✕</button></span>`).join('');}
+
+function saveAgenda(){
+  const mat=(document.getElementById('agMat').value||'').trim().toUpperCase(),fecha=document.getElementById('agFecha').value,hora=document.getElementById('agHora').value;
+  if(!mat||!fecha||!hora){toast('Matrícula, fecha y hora obligatorios','var(--red)');return;}
+  const eId=document.getElementById('agEvento').value,ev=eId?DB.eventos.find(x=>x.id===eId):null;
+  const old=editAgId?DB.agenda.find(x=>x.id===editAgId):null;
+  const a={id:editAgId||uid(),fecha,hora,eventoId:eId||null,eventoNombre:ev?.nombre||'',matricula:mat,remolque:(document.getElementById('agRem').value||'').trim().toUpperCase(),tipoVehiculo:document.getElementById('agTipoV').value,conductor:(document.getElementById('agCond').value||'').trim(),empresa:(document.getElementById('agEmp').value||'').trim(),referencia:(document.getElementById('agRef').value||'').trim().toUpperCase(),montador:(document.getElementById('agMontador').value||'').trim(),expositor:(document.getElementById('agExpositor').value||'').trim(),hall:(document.getElementById('agHall').value||'').trim(),stand:(document.getElementById('agStand').value||'').trim(),puerta:(document.getElementById('agPuerta').value||'').trim(),puertaHall:(document.getElementById('agPuertaHall').value||'').trim(),pasaporte:(document.getElementById('agPas').value||'').trim().toUpperCase(),pais:(document.getElementById('agPais').value||'').trim(),fechaNacimiento:document.getElementById('agFechaNac').value||'',fechaExpiracion:document.getElementById('agFechaExp').value||'',pase:document.getElementById('agPase').value,descargaTipo:document.getElementById('agDescarga')?.value||'',telefono:(document.getElementById('agTel').value||'').trim(),gpsUrl:(document.getElementById('agGps').value||'').trim(),tipoCarga:document.getElementById('agCarga').value,gastoTipo:document.getElementById('agGastoTipo').value,gastoImporte:document.getElementById('agGastoImporte').value||null,estado:document.getElementById('agEstado').value||'PENDIENTE',horaReal:old?.horaReal||null,requisitos:[...agReqsTemp],notas:(document.getElementById('agNotas').value||'').trim(),creadoPor:CU?.nombre||'?',ts:old?.ts||nowL()};
+  if(editAgId)DB.agenda=DB.agenda.map(x=>x.id===editAgId?a:x);else DB.agenda.push(a);
+  saveDB();closeOv('mAg');window._agSubTab='lista';renderAgenda();renderHdr();logAudit(editAgId?'edit_ag':'new_ag','agenda',mat+' '+fecha+' '+hora);toast('✅ Cita guardada','var(--green)');
+}
+
+function saveCond(){const nom=(document.getElementById('fcNom').value||'').trim(),ape=(document.getElementById('fcApe').value||'').trim();if(!nom||!ape){toast('Nombre y apellido obligatorios','var(--red)');return;}const c={id:editCondId||uid(),nombre:nom,apellido:ape,empresa:(document.getElementById('fcEmp').value||'').trim(),matricula:(document.getElementById('fcMat').value||'').trim().toUpperCase(),remolque:(document.getElementById('fcRem').value||'').trim().toUpperCase(),hall:document.getElementById('fcHall').value,telPais:document.getElementById('fcTelP').value,telefono:(document.getElementById('fcTel').value||'').trim(),email:(document.getElementById('fcEmail').value||'').trim(),idioma:document.getElementById('fcIdioma').value,tipoVehiculo:document.getElementById('fcTipoV').value,pasaporte:(document.getElementById('fcPas').value||'').trim().toUpperCase(),pais:(document.getElementById('fcPais').value||'').trim(),fechaNacimiento:document.getElementById('fcFechaNac').value||'',fechaExpiracion:document.getElementById('fcFechaExp').value||'',gpsUrl:(document.getElementById('fcGps').value||'').trim(),notas:(document.getElementById('fcNotas').value||'').trim(),encargado:(document.getElementById('fcEncargado').value||'').trim(),encargadoTelPais:document.getElementById('fcEncTelP').value,encargadoTel:(document.getElementById('fcEncTel').value||'').trim(),encargadoEmail:(document.getElementById('fcEncEmail').value||'').trim()};if(editCondId)DB.conductores=DB.conductores.map(x=>x.id===editCondId?c:x);else DB.conductores.push(c);
+  saveDB();closeOv('mCond');renderConductores();
+  if(window._condSaveAfterFromIng){
+    window._condSaveAfterFromIng=false;
+    setMatTag('👤',c.nombre+' '+c.apellido,c.empresa,'chofer');
+    const saveBtn=document.getElementById('fiMatTagSave');if(saveBtn)saveBtn.style.display='none';
+    toast('✅ Conductor guardado y vinculado a la matrícula','var(--green)',4000);
+  } else {
+    toast('✅ Conductor guardado');
+  }}
+
+function saveMov(){const mat=(document.getElementById('fmMat').value||'').trim().toUpperCase(),hall=document.getElementById('fmHall').value;if(!mat||!hall){toast('Matrícula y hall obligatorios','var(--red)');return;}const tacoRaw=document.getElementById('fmTaco').value;const m={id:editMovId||uid(),matricula:mat,remolque:(document.getElementById('fmRem').value||'').trim().toUpperCase(),nombre:(document.getElementById('fmNom').value||'').trim(),apellido:(document.getElementById('fmApe').value||'').trim(),empresa:(document.getElementById('fmEmp').value||'').trim(),hall,tipoCarga:document.getElementById('fmCarga').value,status:document.getElementById('fmStatus').value,posicion:parseInt(document.getElementById('fmPos').value)||0,numVuelta:parseInt(document.getElementById('fmVuelta').value)||1,tacografoHora:tacoRaw?tacoRaw.replace('T',' '):null,notas:(document.getElementById('fmNotas').value||'').trim(),lastStatusTs:nowL(),ts:editMovId?(DB.movimientos.find(x=>x.id===editMovId)?.ts||nowL()):nowL()};if(editMovId)DB.movimientos=DB.movimientos.map(x=>x.id===editMovId?m:x);else DB.movimientos.push(m);saveDB();closeOv('mMov');renderFlota();renderHdr();toast('✅ Guardado');}
+
+function addPuertaEvento(){const nom=(document.getElementById('evPuertaNom').value||'').trim();if(!nom)return;evPuertasTemp.push({nombre:nom,direccion:(document.getElementById('evPuertaDir').value||'').trim(),qr:(document.getElementById('evPuertaQR').value||'').trim()});document.getElementById('evPuertaNom').value='';document.getElementById('evPuertaDir').value='';document.getElementById('evPuertaQR').value='';renderPuertasEv();}
+
+function removePuertaEv(i){evPuertasTemp.splice(i,1);renderPuertasEv();}
+
+function renderPuertasEv(){const el=document.getElementById('evPuertasList');if(el)el.innerHTML=evPuertasTemp.map((p,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);font-size:12px;flex-wrap:wrap"><span style="font-weight:700">🚪 ${p.nombre}</span>${p.direccion?`<span style="color:var(--text3)">📍 ${p.direccion}</span>`:''} ${p.qr?`<a href="${p.qr}" target="_blank" style="color:var(--blue);font-size:10px;text-decoration:none">🔗 QR Link</a>`:''}<button class="btn btn-danger btn-xs" onclick="removePuertaEv(${i})">✕</button></div>`).join('');}
+
+function saveEvento(){const nom=(document.getElementById('evNom').value||'').trim();if(!nom){toast('Nombre obligatorio','var(--red)');return;}const campos={};EV_CAMPOS.forEach(k=>{const el=document.getElementById('evF'+k);if(el)campos[k]=el.dataset?.val||el.value||'show';});
+  // Preservar traducciones existentes, actualizar solo el idioma del usuario
+  const oldEv=editEvId?DB.eventos.find(x=>x.id===editEvId):null;
+  let phrases={...(oldEv?.phrases||{})};
+  /* phrases managed in print config, not events */
+  const evHalls=[...document.querySelectorAll('.evHallCb:checked')].map(cb=>cb.value);
+  const printName=(document.getElementById('evPrintName')?.value||'').trim();
+  const acumularPos=document.getElementById('evAcumPos')?.checked||false;
+  const phrase2='';
+  const oldEv2=editEvId?DB.eventos.find(x=>x.id===editEvId):null;
+  const phrases2={...(oldEv2?.phrases2||{})};
+  const _evUsr=[...document.querySelectorAll('[data-ev-user]:checked')].map(el=>el.dataset.evUser);
+  const _prevUsr=editEvId?(DB.eventos.find(x=>x.id===editEvId)?.usuariosAsignados||[]):[];
+  const ev={id:editEvId||uid(),phrase2,phrases2,nombre:nom,ini:document.getElementById('evIni').value,fin:document.getElementById('evFin').value,ico:document.getElementById('evIco').value||'📋',recintoId:document.getElementById('evRecintoId')?.value||'',recinto:document.getElementById('evRec').value,ciudad:document.getElementById('evCiudad').value,halls:evHalls,campos,puertas:[...evPuertasTemp],phrases,printTemplate:document.getElementById('evPrintTemplate')?.value||'fullgv',printName,acumularPos,bgImage:evBgData||'',usuariosAsignados:_evUsr.length?_evUsr:_prevUsr};
+  // Save named print template
+  if(printName){if(!DB.printTemplates)DB.printTemplates=[];if(!DB.printTemplates.find(t=>t.name===printName))DB.printTemplates.push({name:printName,type:ev.printTemplate,fields:ev.campos,hiddenFields:[...(DB.printCfg2?.hiddenFields||[])]});}
+  const _oldEv2=editEvId?DB.eventos.find(x=>x.id===editEvId):null;if(!DB.eventoHistorial)DB.eventoHistorial=[];if(_oldEv2)DB.eventoHistorial.unshift({..._oldEv2,_editedBy:CU?.nombre||'?',_editedTs:nowL()});if(DB.eventoHistorial.length>50)DB.eventoHistorial=DB.eventoHistorial.slice(0,50);logAudit(editEvId?'edit_evento':'new_evento','evento',(editEvId?'Editado: ':'Creado: ')+ev.nombre);
+  if(editEvId)DB.eventos=DB.eventos.map(x=>x.id===editEvId?ev:x);else DB.eventos.push(ev);
+  /* phrases not stored in events anymore */
+  saveDB();closeOv('mEvento');renderIngresos();toast('✅ Evento guardado');}
+
+function renderEvHallsGrid(allHalls,selectedHalls){const grid=document.getElementById('evHallsGrid');if(!grid)return;if(!allHalls||!allHalls.length){grid.innerHTML='<span style="font-size:11px;color:var(--text3)">Selecciona un recinto para ver los halls disponibles</span>';return;}grid.innerHTML=allHalls.map(h=>{const sel=selectedHalls.includes(h);return`<label style="display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:var(--r);border:1.5px solid ${sel?'var(--blue)':'var(--border)'};background:${sel?'var(--blue)':'var(--bg2)'};color:${sel?'#fff':'var(--text3)'};font-size:12px;font-weight:800;cursor:pointer;user-select:none;transition:all .15s"><input type="checkbox" class="evHallCb" value="${h}" ${sel?'checked':''} onchange="const l=this.closest('label');const c=this.checked;l.style.borderColor=c?'var(--blue)':'var(--border)';l.style.background=c?'var(--blue)':'var(--bg2)';l.style.color=c?'#fff':'var(--text3)'" style="display:none">${h}</label>`;}).join('')+`<button class="btn btn-xs btn-gh" onclick="document.querySelectorAll('.evHallCb').forEach(cb=>{cb.checked=true;const l=cb.closest('label');l.style.borderColor='var(--blue)';l.style.background='var(--blue)';l.style.color='#fff'})" style="margin-left:6px">✓ Todos</button><button class="btn btn-xs btn-gh" onclick="document.querySelectorAll('.evHallCb').forEach(cb=>{cb.checked=false;const l=cb.closest('label');l.style.borderColor='var(--border)';l.style.background='var(--bg2)';l.style.color='var(--text3)'})">✕ Ninguno</button>`;}
+
+function saveEE(){const mat=(document.getElementById('eeM').value||'').trim().toUpperCase();if(!mat){toast('Matrícula obligatoria','var(--red)');return;}const e={id:editEEId||uid(),matricula:mat,hora:document.getElementById('eeHora').value,prioridad:document.getElementById('eePrio').value,conductor:(document.getElementById('eeCond').value||'').trim(),empresa:(document.getElementById('eeEmp').value||'').trim(),telefono:(document.getElementById('eeTel').value||'').trim(),hall:document.getElementById('eeHall').value,booking:(document.getElementById('eeRef').value||'').trim().toUpperCase(),notas:(document.getElementById('eeNotas').value||'').trim(),estado:'pendiente',ts:nowL(),creadoPor:CU?.nombre||''};if(editEEId)DB.enEspera=DB.enEspera.map(x=>x.id===editEEId?e:x);else DB.enEspera.push(e);autoMsg(e.prioridad==='urgente'?'urgente':e.prioridad==='alta'?'alerta':'info','⏳ '+mat+' en espera',mat+' · Hall: '+(e.hall||'?'),mat);saveDB();closeOv('mEE');renderIngresos();renderHdr();toast('⏳ En espera añadido');}
+
+function saveLN(){const mat=(document.getElementById('lnM').value||'').trim().toUpperCase(),mot=(document.getElementById('lnMotivo').value||'').trim();if(!mat||!mot){toast('Matrícula y motivo obligatorios','var(--red)');return;}const ln={id:editLNId||uid(),matricula:mat,nivel:document.getElementById('lnN').value,motivo:mot,empresa:(document.getElementById('lnEmp').value||'').trim(),hasta:document.getElementById('lnHasta').value||null,ts:nowL(),usuario:CU?.nombre||''};if(editLNId)DB.listaNegra=DB.listaNegra.map(x=>x.id===editLNId?ln:x);else DB.listaNegra.push(ln);autoMsg('alerta','⭐ Especial',mat+' — '+ln.nivel.toUpperCase()+': '+mot,mat);logAudit('create','listaNegra',mat+' ('+ln.nivel+')');saveDB();closeOv('mLN');renderIngresos();toast('🚫 '+mat+' añadida');}
+
+function saveMsg(){if(!canMensajes()){toast('Sin permiso para enviar mensajes','var(--red)');return;};const tit=(document.getElementById('msgTitulo').value||'').trim(),txt=(document.getElementById('msgTexto').value||'').trim();if(!tit||!txt){toast('Título y mensaje obligatorios','var(--red)');return;}const m={id:uid(),tipo:document.getElementById('msgTipo').value,titulo:tit,mensaje:txt,matricula:(document.getElementById('msgMat').value||'').trim().toUpperCase(),ts:nowL(),autor:CU?.nombre||'?',leido:[]};DB.mensajesRampa.unshift(m);if(DB.mensajesRampa.length>200)DB.mensajesRampa=DB.mensajesRampa.slice(0,200);saveDBNow();closeOv('mMsg');renderIngresos();renderHdr();toast('📢 Enviado');}
+
+function updateRolPerms(){const rol=(document.getElementById('fuRol')||{}).value||'editor';const full=rol==='supervisor'||rol==='superadmin';['fpAdd','fpEdit','fpDel','fpStat','fpExp','fpBL','fpPrint','fpImport','fpClean','fpSaveTpl','fpDelTpl','fpEvEdit','fpActivarEv','fpMsg'].forEach(id=>{const el=document.getElementById(id);if(el){el.checked=full;el.disabled=full;updTgl(el);}});const pw=document.getElementById('permsWrap');if(pw)pw.style.opacity=full?'.6':'1';}
+
+function updTgl(el){const lbl=el.closest('.tgl');if(!lbl)return;if(el.checked){lbl.classList.add('on');}else{lbl.classList.remove('on');}}
+
+function doDelete(){if(pendingDelFn){pendingDelFn();pendingDelFn=null;}closeOv('mDel');}
+
+function setFormPrintMode(mode){
+  const cfgK=(_ingSource||'ingresos')==='ingresos2'?'ing2':'ing1';
+  if(!DB.printCfgModes)DB.printCfgModes={};
+  DB.printCfgModes[cfgK]=mode;
+  saveDB();
+  const btnN=document.getElementById('btnNormalA4Form');
+  const btnT=document.getElementById('btnTroquelA4Form');
+  if(btnN&&btnT){
+    if(mode==='normal'){
+      btnN.style.background='var(--teal)';btnN.style.color='#fff';btnN.style.borderColor='var(--teal)';
+      btnT.style.background='var(--bg3)';btnT.style.color='var(--text)';btnT.style.borderColor='var(--border2)';
+    } else {
+      btnT.style.background='#7c3aed';btnT.style.color='#fff';btnT.style.borderColor='#7c3aed';
+      btnN.style.background='var(--bg3)';btnN.style.color='var(--text)';btnN.style.borderColor='var(--border2)';
+    }
+  }
+}
+
+
+async function saveUser(){
+  const nom=(document.getElementById('fuNom').value||'').trim();
+  const username=(document.getElementById('fuUsername').value||'').trim();
+  const email=(document.getElementById('fuEmail').value||'').trim();
+  const pass=document.getElementById('fuPass').value;
+  const pass2=document.getElementById('fuPass2').value;
+  const pin=document.getElementById('fuPin').value;
+  const pin2=document.getElementById('fuPin2').value;
+  const twoFA=document.getElementById('fu2FA')?.checked||false;
+  if(!nom){toast('Nombre obligatorio','var(--red)');return;}
+  if(!username){toast('Nombre de usuario obligatorio','var(--red)');return;}
+  // Check username unique
+  const existingU=DB.usuarios.find(x=>x.username===username&&x.id!==editUserId);
+  if(existingU){toast('Nombre de usuario ya existe','var(--red)');return;}
+  if(pass&&pass!==pass2){toast('Las contraseñas no coinciden','var(--red)');return;}
+  if(pin&&(pin.length<6||pin.length>8||!/^\d+$/.test(pin))){toast('PIN: mínimo 6 dígitos numéricos','var(--red)');return;}
+  if(pin&&pin!==pin2){toast('Los PINs no coinciden','var(--red)');return;}
+  if(twoFA&&!email){toast('Email requerido para activar 2FA','var(--amber)');return;}
+  const _gp=id=>!!(document.getElementById(id)?.checked);const permisos={canAdd:_gp('fpAdd'),canEdit:_gp('fpEdit'),canDel:_gp('fpDel'),canStatus:_gp('fpStat'),canExport:_gp('fpExp'),canSpecial:_gp('fpBL'),canEditEvento:_gp('fpEvEdit'),canPrint:_gp('fpPrint'),canImport:_gp('fpImport'),canClean:_gp('fpClean'),canSaveTpl:_gp('fpSaveTpl'),canDelTpl:_gp('fpDelTpl'),canActivarEvento:_gp('fpActivarEv'),canMensajes:_gp('fpMsg'),canCampos:_gp('fpCampos')};
+  const tabMap=[['ftDash','dash'],['ftIng','ingresos'],['ftIng2','ingresos2'],['ftFlota','flota'],['ftCond','conductores'],['ftAg','agenda'],['ftAn','analytics'],['ftVeh','vehiculos'],['ftAud','auditoria'],['ftPap','papelera'],['ftRec','recintos'],['ftUs','usuarios'],['ftImp','impresion'],['ftEv','eventos']];
+  const tabs=tabMap.filter(([eid])=>document.getElementById(eid)?.checked).map(([,tab])=>tab);
+  const oldUser=editUserId?DB.usuarios.find(x=>x.id===editUserId):null;
+  // Hash password con PBKDF2 si se proporcionó
+  let passwordHash=oldUser?.passwordHash||'';
+  let passwordSalt=oldUser?.passwordSalt||'';
+  if(pass){const result=await hashPassword(pass,null);passwordHash=result.hash;passwordSalt=result.salt;}
+  const isNew=!editUserId;
+  const u={
+    id:editUserId||uid(),nombre:nom,username,email,
+    passwordHash,passwordSalt,twoFA,
+    rol:document.getElementById('fuRol').value,
+    lang:document.getElementById('fuLang').value||'es',
+    pin:pin||(oldUser?.pin||''),
+    permisos,tabs,
+    loginAttempts:oldUser?.loginAttempts||0,
+    lockedUntil:oldUser?.lockedUntil||null,
+    mustChangePassword:isNew?true:(oldUser?.mustChangePassword||false)
+  };
+  if(editUserId)DB.usuarios=DB.usuarios.map(x=>x.id===editUserId?u:x);else DB.usuarios.push(u);
+  if(CU?.id===u.id){CU=u;setLang(u.lang||'es');applyLang();}
+  saveDB();closeOv('mUser');renderUsuarios();toast('✅ Usuario guardado');
+}
+
+// ─── WINDOW ALIASES FOR MODAL SAVE FUNCTIONS ────────────────────────
+window.closeOv = closeOv;
+window.saveIngreso = saveIngreso;
+window.saveMov = saveMov;
+window.saveCond = saveCond;
+window.saveAgenda = saveAgenda;
+window.saveEvento = saveEvento;
+window.saveRecinto = saveRecinto;
+window.saveUser = saveUser;
+window.saveLN = saveLN;
+window.saveEE = saveEE;
+window.saveMsg = saveMsg;
+window.doDelete = doDelete;
+window.addRecHall = addRecHall;
+window.addRecPuerta = addRecPuerta;
+window.addPuertaEvento = addPuertaEvento;
+window.addReqAg = addReqAg;
+window.removeReqAg = removeReqAg;
+window.renderAgReqs = renderAgReqs;
+window.renderRecHalls = renderRecHalls;
+window.renderRecPuertas = renderRecPuertas;
+window.renderPuertasEv = renderPuertasEv;
+window.removePuertaEv = typeof removePuertaEv !== 'undefined' ? removePuertaEv : (i) => { evPuertasTemp.splice(i,1); renderPuertasEv(); };
+window.renderEvHallsGrid = renderEvHallsGrid;
+window.updateRolPerms = updateRolPerms;
+window.updTgl = updTgl;
+window.syncToggleButtons = syncToggleButtons;
+window.syncAgDescarga = syncAgDescarga;
+window.fillPuertaSelect = fillPuertaSelect;
+window.fillLangIng = fillLangIng;
+window.fillIdiomaSelect = typeof fillIdiomaSelect !== 'undefined' ? fillIdiomaSelect : () => {};
+window.onFormEventoChange = onFormEventoChange;
+window.onAgEventoChange = onAgEventoChange;
+window.applyEventFieldVisibility = applyEventFieldVisibility;
+window.applyIngFormFieldVisibility = applyIngFormFieldVisibility;
+window.updatePhrasePreview = updatePhrasePreview;
+window.setFormPrintMode = setFormPrintMode;
+window.setMatTag = setMatTag;
+window.getFormEvento = getFormEvento;
+window.saveMatAsChofer = saveMatAsChofer;
+window.clearMatField = clearMatField;
+window.canEditEvento = canEditEvento;
+window._recHallsTemp = _recHallsTemp;
+window._recPuertasTemp = _recPuertasTemp;
+window.evPuertasTemp = evPuertasTemp;
+window.agReqsTemp = agReqsTemp;
+
+// ─── STUB ALIASES FOR MODAL HTML HANDLERS ───────────────────────────
+window.blOverride = window.blOverride || (() => { toast('Función pendiente','var(--amber)'); });
+window.captureOCR = window.captureOCR || (() => {});
+window.checkPassStrength = window.checkPassStrength || ((v) => {});
+window.closeCam = window.closeCam || (() => { closeOv('mCam'); });
+window.confirmLang = window.confirmLang || (() => { closeOv('mLangPicker'); });
+window.doGlobalSearch = window.doGlobalSearch || (() => {});
+window.filterHallSuggestions = typeof filterHallSuggestions !== 'undefined' ? filterHallSuggestions : (q) => {};
+window.imprimirYGuardarConTpl = window.imprimirYGuardarConTpl || (() => {});
+window.loadEvBg = window.loadEvBg || (() => {});
+window.onRecintoSelectChange = window.onRecintoSelectChange || (() => { const sel=document.getElementById('evRecintoId'); if(!sel)return; const r=(DB.recintos||[]).find(x=>x.id===sel.value); if(r){ document.getElementById('evRec').value=r.nombre||''; document.getElementById('evCiudad').value=r.ciudad||''; renderEvHallsGrid(r.halls||[],[]); }});
+window.openCamModal = window.openCamModal || (() => { toast('Cámara no disponible','var(--amber)'); });
+window.processCameraCapture = window.processCameraCapture || (() => {});
+window.searchChoferAg = window.searchChoferAg || (() => {});
+window.setAgDescarga = window.setAgDescarga || ((v) => { syncAgDescarga(v); });
+window.setToggle = window.setToggle || ((id,v) => { const el=document.getElementById(id); if(el){ el.value=v; syncToggleButtons(); }});
+window.useCamResult = window.useCamResult || (() => {});
