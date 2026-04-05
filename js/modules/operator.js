@@ -492,10 +492,9 @@ window.dlTemplateEventos = () => { _xlsxWrite([['Nombre','Inicio','Fin','Recinto
 window.dlTemplateUsuarios = () => { _xlsxWrite([['Nombre','Email','Rol','PIN','Idioma']], 'Usuarios', 'plantilla_usuarios.xlsx'); };
 // ─── MODAL VARIABLES ─────────────────────────────
 const EV_CAMPOS=['posicion','llamador','ref','empresa','hall','stand','puertaHall','montador','expositor','nombre','apellido','pasaporte','telefono','email','comentario','horario','fechaNacimiento','pais','remolque','tipoVehiculo','descargaTipo'];
-let CU=null,curTab='dash',pendingDelFn=null,blkOverrideData=null,_lastMsgCount=0;
-let editIngId=null,editAgId=null,editCondId=null,editMovId=null,editEvId=null,editEEId=null,editLNId=null,editUserId=null;
+let CU=null,pendingDelFn=null,_lastMsgCount=0;
+let editEEId=null,editLNId=null;
 let CUR_LANG='es';
-let _recHallsTemp=[],_recPuertasTemp=[],editRecId=null;
 
 // ─── MODAL SAVE/HELPER FUNCTIONS ─────────────────
 function renderTipoVehButtons(ev){
