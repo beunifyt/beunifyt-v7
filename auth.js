@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════════
 // BeUnifyT v8 — auth.js — Login
+// Dos botones iguales: Acceder + Registrar Empresa
 // ═══════════════════════════════════════════════════════════
 
 import { AppState } from './state.js';
@@ -9,10 +10,7 @@ import { FIREBASE_CONFIG } from './config.js';
 
 let _container = null;
 
-export function renderLogin(container) {
-  _container = container;
-  paint();
-}
+export function renderLogin(container) { _container = container; paint(); }
 
 function flagHtml(code) {
   const l = LANGS_UI.find(x => x.code === code);
@@ -52,13 +50,17 @@ function paint() {
           <input id="loginPass" type="password" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none" autocomplete="current-password">
         </div>
 
-        <button id="loginBtn" style="width:100%;padding:12px;background:#3b82f6;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">
+        <!-- DOS BOTONES DEL MISMO TAMAÑO -->
+        <button id="loginBtn" style="width:100%;padding:12px;background:#3b82f6;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px">
           ${t('login')}
         </button>
 
-        <div style="display:flex;justify-content:space-between;margin-top:14px">
+        <button id="registerBtn" style="width:100%;padding:12px;background:#10b981;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">
+          ${t('register')}
+        </button>
+
+        <div style="text-align:center;margin-top:12px">
           <a href="#" id="forgotLink" style="color:#3b82f6;text-decoration:none;font-size:12px">${t('forgot')}</a>
-          <a href="#" id="registerLink" style="color:#3b82f6;text-decoration:none;font-size:12px">${t('register')}</a>
         </div>
       </div>
     </div>`;
@@ -66,12 +68,10 @@ function paint() {
   // Dropdown vertical
   const langBtn = _container.querySelector('#langBtn');
   const langDrop = _container.querySelector('#langDrop');
-
   langDrop.innerHTML = LANGS_UI.map(l => {
     const fH = l.flag.includes('<svg') ? l.flag : `<span style="font-size:16px">${l.flag}</span>`;
     return `<div class="lang-opt" data-code="${l.code}" style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap;${l.code===lang?'background:#eff6ff;font-weight:700;':''}">${fH} ${l.name}</div>`;
   }).join('');
-
   langBtn.onclick = (e) => { e.stopPropagation(); langDrop.style.display = langDrop.style.display==='flex'?'none':'flex'; };
   langDrop.querySelectorAll('.lang-opt').forEach(el => {
     el.onmouseenter = () => { if(el.dataset.code!==lang) el.style.background='#f8fafc'; };
@@ -82,7 +82,7 @@ function paint() {
 
   _container.querySelector('#loginBtn').onclick = () => doLogin();
   _container.querySelector('#loginPass').onkeydown = (e) => { if(e.key==='Enter') doLogin(); };
-  _container.querySelector('#registerLink').onclick = (e) => { e.preventDefault(); import('./empresa_form.js').then(m=>m.renderRegistro(_container)).catch(()=>toast('Error','#dc2626')); };
+  _container.querySelector('#registerBtn').onclick = () => { import('./empresa_form.js').then(m=>m.renderRegistro(_container)).catch(()=>toast('Error','#dc2626')); };
   _container.querySelector('#forgotLink').onclick = (e) => { e.preventDefault(); import('./recuperar.js').then(m=>m.renderRecuperar(_container)).catch(()=>toast('Error','#dc2626')); };
 }
 
@@ -92,10 +92,8 @@ async function doLogin() {
   const errBox = _container.querySelector('#loginError');
   const btn = _container.querySelector('#loginBtn');
   const t = (k) => trFree('auth', k);
-
   if (!email || !pass) { showError(errBox, t('error_cred')); return; }
   btn.disabled = true; btn.textContent = '...';
-
   try {
     const { initFirestore, fsGet, fsUpdate } = await import('./firestore.js');
     await initFirestore(FIREBASE_CONFIG);
@@ -106,12 +104,10 @@ async function doLogin() {
     const uid = cred.user.uid;
     const userData = await fsGet(`users/${uid}`);
     if (!userData) { showError(errBox, t('error_cred')); btn.disabled=false; btn.textContent=t('login'); return; }
-
     const { buildUsuario, launchShell } = await import('./app.js');
     const usuario = buildUsuario(userData, uid);
     const loginLang = AppState.get('currentLang');
     if (loginLang !== usuario.idioma) { usuario.idioma = loginLang; await fsUpdate(`users/${uid}`, { idioma: loginLang }).catch(()=>{}); }
-
     localStorage.setItem('beu_session', JSON.stringify({ uid, idioma:usuario.idioma, rol:usuario.rol, timestamp:Date.now() }));
     AppState.set('currentUser', usuario); AppState.set('currentLang', usuario.idioma); AppState.set('theme', usuario.tema);
     toast(t('welcome')+', '+safeHtml(usuario.nombre), '#10b981');
