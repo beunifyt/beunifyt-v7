@@ -8,9 +8,9 @@ import { AppState } from './state.js';
 // ─── BANDERAS / IDIOMAS UI ──────────────────────────────
 export const LANGS_UI = [
   { code:'es', flag:'🇪🇸', name:'Español' },
-  { code:'ca', flag:'🏴', name:'Català' },
-  { code:'eu', flag:'🏴', name:'Euskara' },
-  { code:'gl', flag:'🏴', name:'Galego' },
+  { code:'ca', flag:'<svg width="20" height="14" viewBox="0 0 20 14" style="vertical-align:middle;border-radius:1px;border:0.5px solid #bbb"><rect width="20" height="14" fill="#FCDD09"/><rect y="1.75" width="20" height="1.75" fill="#DA121A"/><rect y="5.25" width="20" height="1.75" fill="#DA121A"/><rect y="8.75" width="20" height="1.75" fill="#DA121A"/><rect y="12.25" width="20" height="1.75" fill="#DA121A"/></svg>', name:'Català' },
+  { code:'eu', flag:'<svg width="20" height="14" viewBox="0 0 20 14" style="vertical-align:middle;border-radius:1px;border:0.5px solid #bbb"><rect width="20" height="14" fill="#D52B1E"/><rect x="8" width="4" height="14" fill="#007A3D"/><rect y="5" width="20" height="4" fill="#007A3D"/><line x1="0" y1="0" x2="20" y2="14" stroke="#FFF" stroke-width="2.5"/><line x1="20" y1="0" x2="0" y2="14" stroke="#FFF" stroke-width="2.5"/><rect x="8" width="4" height="14" fill="#007A3D"/><rect y="5" width="20" height="4" fill="#007A3D"/></svg>', name:'Euskara' },
+  { code:'gl', flag:'<svg width="20" height="14" viewBox="0 0 20 14" style="vertical-align:middle;border-radius:1px;border:0.5px solid #bbb"><rect width="20" height="14" fill="#FFF"/><polygon points="0,0 5,0 20,14 15,14" fill="#00A2E2"/></svg>', name:'Galego' },
   { code:'en', flag:'🇬🇧', name:'English' },
   { code:'fr', flag:'🇫🇷', name:'Français' },
   { code:'de', flag:'🇩🇪', name:'Deutsch' },
