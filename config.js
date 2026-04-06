@@ -1,12 +1,13 @@
 // ═══════════════════════════════════════════════════════════
 // BeUnifyT v8 — config.js — Firebase config
 // ═══════════════════════════════════════════════════════════
-
+ 
 export const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBxMWEgtMSVSYcL3OBSJnFOTFJFz2aXHuI",
-  authDomain: "beunifyt.firebaseapp.com",
-  projectId: "beunifyt",
-  storageBucket: "beunifyt.appspot.com",
-  messagingSenderId: "493aborrar",
-  appId: "1:493:web:abc123"
+  apiKey: "AIzaSyBKMfHEcnRAJJ9zotIXu3hluFpyjwQDfq4",
+  authDomain: "beunifyt-prod.firebaseapp.com",
+  projectId: "beunifyt-prod",
+  storageBucket: "beunifyt-prod.firebasestorage.app",
+  messagingSenderId: "392352190516",
+  appId: "1:392352190516:web:fb4431ca96ab29a5feba61",
 };
+ 
