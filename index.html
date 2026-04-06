@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>BeUnifyT</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;font-family:system-ui,-apple-system,sans-serif}
+
+/* Tema según SO */
+body{background:#f5f7fa;color:#1a1a1a;transition:background .3s,color .3s}
+@media(prefers-color-scheme:dark){
+  body{background:#0f172a;color:#e2e8f0}
+  .logo-box{background:#1e293b;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+  .logo-text{color:#67e8f9}
+  .logo-sub{color:#64748b}
+  #app{background:#0f172a}
+}
+
+/* Centrado */
+.splash{display:flex;align-items:center;justify-content:center;height:100vh;width:100vw}
+.logo-box{background:#fff;border-radius:20px;padding:40px 48px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.08)}
+.logo-text{font-size:28px;font-weight:800;letter-spacing:-0.5px;color:#0f172a}
+.logo-sub{font-size:11px;color:#94a3b8;margin-top:4px;letter-spacing:1px;text-transform:uppercase}
+.spinner{width:24px;height:24px;border:3px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:spin .6s linear infinite;margin:16px auto 0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Responsivo */
+@media(max-width:480px){
+  .logo-box{padding:32px 28px;border-radius:16px;margin:0 16px}
+  .logo-text{font-size:22px}
+}
+
+/* Container app — oculto hasta que se necesite */
+#app{display:none;height:100vh;width:100vw;overflow:hidden}
+
+/* Toast global */
+@keyframes beuToastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<!-- CAPA 0: Splash con logo -->
+<div class="splash" id="splash">
+  <div class="logo-box">
+    <div class="logo-text">BeUnifyT</div>
+    <div class="logo-sub">unified access control</div>
+    <div class="spinner"></div>
+  </div>
+</div>
+
+<!-- CAPA 1+: App container -->
+<div id="app"></div>
+
+<!-- Único script: arranca la cadena -->
+<script type="module" src="app.js"></script>
+</body>
+</html>
