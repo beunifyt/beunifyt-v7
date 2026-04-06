@@ -2,7 +2,8 @@
 import { initFirestore } from './firestore.js';
 import { initAuth }      from './auth.js';
 import { AppState }      from './state.js';
-import './langs.js';  // Load language system globally
+import { langManager }   from './language-manager.js';
+import './langs.js';
 
 const FIREBASE_CONFIG = window.BEU_CONFIG || {
   apiKey:            'AIzaSyBKMfHEcnRAJJ9zotIXu3hluFpyjwQDfq4',
@@ -28,6 +29,13 @@ async function bootstrap() {
   await initFirestore(FIREBASE_CONFIG);
   _status('checking session…');
   await initAuth();
+  
+  // Inicializar Language Manager después de auth
+  const user = AppState.get('currentUser');
+  if (user?.id) {
+    console.log('🌍 Inicializando idioma para usuario:', user.id);
+    await langManager.init(user.id);
+  }
 }
 
 window.addEventListener('unhandledrejection', e => console.error('[BEU]', e.reason));

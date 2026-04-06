@@ -117,34 +117,21 @@ function _showLogin() {
   // Hide splash screen
   try { window.hideSplash && window.hideSplash(); } catch(e) {}
   const lang = AppState.get('currentLang') || 'es';
-  const I18N = {
-    es: { id:'Usuario o email',pass:'Contraseña',btn:'Acceder',pin:'Acceso con PIN',reg:'🏢 Registrar mi empresa →',twoFA:'Verificación en 2 pasos',verify:'Verificar código',resend:'Reenviar código',back:'← Volver',err_creds:'Usuario o contraseña incorrectos',err_lock:'Cuenta bloqueada',err_2fa:'Código incorrecto',err_pin:'PIN incorrecto' },
-    en: { id:'Username or email',pass:'Password',btn:'Sign in',pin:'PIN access',reg:'🏢 Register my company →',twoFA:'2-step verification',verify:'Verify code',resend:'Resend code',back:'← Back',err_creds:'Incorrect credentials',err_lock:'Account locked',err_2fa:'Invalid code',err_pin:'Incorrect PIN' },
-    fr: { id:'Utilisateur ou email',pass:'Mot de passe',btn:'Se connecter',pin:'Accès PIN',reg:'🏢 Inscrire mon entreprise →',twoFA:'Vérification en 2 étapes',verify:'Vérifier le code',resend:'Renvoyer',back:'← Retour',err_creds:'Identifiants incorrects',err_lock:'Compte bloqué',err_2fa:'Code incorrect',err_pin:'PIN incorrect' },
-    de: { id:'Benutzer oder E-Mail',pass:'Passwort',btn:'Anmelden',pin:'PIN-Zugang',reg:'🏢 Mein Unternehmen registrieren →',twoFA:'2-Stufen-Verifizierung',verify:'Code verifizieren',resend:'Code erneut senden',back:'← Zurück',err_creds:'Falsche Anmeldedaten',err_lock:'Konto gesperrt',err_2fa:'Falscher Code',err_pin:'Falscher PIN' },
-    it: { id:'Utente o email',pass:'Password',btn:'Accedi',pin:'Accesso PIN',reg:'🏢 Registra la mia azienda →',twoFA:'Verifica in 2 passaggi',verify:'Verifica codice',resend:'Invia di nuovo',back:'← Indietro',err_creds:'Credenziali errate',err_lock:'Account bloccato',err_2fa:'Codice errato',err_pin:'PIN errato' },
-    pt: { id:'Utilizador ou email',pass:'Palavra-passe',btn:'Entrar',pin:'Acesso PIN',reg:'🏢 Registar a minha empresa →',twoFA:'Verificação em 2 etapas',verify:'Verificar código',resend:'Reenviar',back:'← Voltar',err_creds:'Credenciais incorretas',err_lock:'Conta bloqueada',err_2fa:'Código errado',err_pin:'PIN errado' },
-    pl: { id:'Użytkownik lub email',pass:'Hasło',btn:'Zaloguj',pin:'Dostęp PIN',reg:'🏢 Zarejestruj firmę →',twoFA:'Weryfikacja 2-etapowa',verify:'Weryfikuj kod',resend:'Wyślij ponownie',back:'← Wróć',err_creds:'Błędne dane',err_lock:'Konto zablokowane',err_2fa:'Błędny kod',err_pin:'Błędny PIN' },
-    ro: { id:'Utilizator sau email',pass:'Parolă',btn:'Conectare',pin:'Acces PIN',reg:'🏢 Înregistrează compania →',twoFA:'Verificare în 2 pași',verify:'Verificați codul',resend:'Retrimite',back:'← Înapoi',err_creds:'Date incorecte',err_lock:'Cont blocat',err_2fa:'Cod incorect',err_pin:'PIN incorect' },
-    nl: { id:'Gebruiker of e-mail',pass:'Wachtwoord',btn:'Inloggen',pin:'PIN-toegang',reg:'🏢 Bedrijf registreren →',twoFA:'2-staps verificatie',verify:'Code verifiëren',resend:'Opnieuw sturen',back:'← Terug',err_creds:'Onjuiste gegevens',err_lock:'Account geblokkeerd',err_2fa:'Onjuiste code',err_pin:'Onjuiste PIN' },
-    hu: { id:'Felhasználó vagy email',pass:'Jelszó',btn:'Belépés',pin:'PIN hozzáférés',reg:'🏢 Cégregisztráció →',twoFA:'2-lépéses ellenőrzés',verify:'Kód ellenőrzése',resend:'Újraküldés',back:'← Vissza',err_creds:'Hibás adatok',err_lock:'Fiók zárolva',err_2fa:'Hibás kód',err_pin:'Hibás PIN' },
-    cs: { id:'Uživatel nebo email',pass:'Heslo',btn:'Přihlásit',pin:'PIN přístup',reg:'🏢 Registrovat firmu →',twoFA:'2-kroková verifikace',verify:'Ověřit kód',resend:'Znovu odeslat',back:'← Zpět',err_creds:'Nesprávné údaje',err_lock:'Účet zablokován',err_2fa:'Nesprávný kód',err_pin:'Nesprávný PIN' },
-    hr: { id:'Korisnik ili email',pass:'Lozinka',btn:'Prijava',pin:'PIN pristup',reg:'🏢 Registriraj tvrtku →',twoFA:'2-koračna verifikacija',verify:'Provjeri kod',resend:'Pošalji ponovo',back:'← Natrag',err_creds:'Pogrešni podaci',err_lock:'Račun blokiran',err_2fa:'Pogrešan kod',err_pin:'Pogrešan PIN' },
-    sk: { id:'Používateľ alebo email',pass:'Heslo',btn:'Prihlásiť',pin:'PIN prístup',reg:'🏢 Registrovať firmu →',twoFA:'Overenie v 2 krokoch',verify:'Overiť kód',resend:'Znova odoslať',back:'← Späť',err_creds:'Nesprávne údaje',err_lock:'Účet zablokovaný',err_2fa:'Nesprávny kód',err_pin:'Nesprávny PIN' },
-    sl: { id:'Uporabnik ali email',pass:'Geslo',btn:'Prijava',pin:'PIN dostop',reg:'🏢 Registriraj podjetje →',twoFA:'2-koračna verifikacija',verify:'Preveri kodo',resend:'Pošlji ponovo',back:'← Nazaj',err_creds:'Napačni podatki',err_lock:'Račun blokiran',err_2fa:'Napačna koda',err_pin:'Napačen PIN' },
-    sv: { id:'Användare eller e-post',pass:'Lösenord',btn:'Logga in',pin:'PIN-åtkomst',reg:'🏢 Registrera mitt företag →',twoFA:'2-stegsverifiering',verify:'Verifiera kod',resend:'Skicka igen',back:'← Tillbaka',err_creds:'Felaktiga uppgifter',err_lock:'Konto låst',err_2fa:'Fel kod',err_pin:'Fel PIN' },
-    fi: { id:'Käyttäjä tai sähköposti',pass:'Salasana',btn:'Kirjaudu',pin:'PIN-pääsy',reg:'🏢 Rekisteröi yritykseni →',twoFA:'2-vaiheinen vahvistus',verify:'Vahvista koodi',resend:'Lähetä uudelleen',back:'← Takaisin',err_creds:'Virheelliset tiedot',err_lock:'Tili lukittu',err_2fa:'Väärä koodi',err_pin:'Väärä PIN' },
-    el: { id:'Χρήστης ή email',pass:'Κωδικός',btn:'Είσοδος',pin:'Πρόσβαση PIN',reg:'🏢 Εγγραφή εταιρείας →',twoFA:'Επαλήθευση 2 βημάτων',verify:'Επαλήθευση κωδικού',resend:'Επαναποστολή',back:'← Πίσω',err_creds:'Λανθασμένα στοιχεία',err_lock:'Λογαριασμός κλειδωμένος',err_2fa:'Λανθασμένος κωδικός',err_pin:'Λανθασμένο PIN' },
-    bg: { id:'Потребител или имейл',pass:'Парола',btn:'Вход',pin:'PIN достъп',reg:'🏢 Регистрирай фирма →',twoFA:'Проверка в 2 стъпки',verify:'Проверете кода',resend:'Изпратете отново',back:'← Назад',err_creds:'Грешни данни',err_lock:'Акаунтът е блокиран',err_2fa:'Грешен код',err_pin:'Грешен PIN' },
-    uk: { id:'Користувач або email',pass:'Пароль',btn:'Увійти',pin:'Доступ PIN',reg:'🏢 Зареєструвати компанію →',twoFA:'Двоетапна верифікація',verify:'Перевірити код',resend:'Надіслати знову',back:'← Назад',err_creds:'Невірні дані',err_lock:'Акаунт заблоковано',err_2fa:'Невірний код',err_pin:'Невірний PIN' },
-    ru: { id:'Пользователь или email',pass:'Пароль',btn:'Войти',pin:'Доступ PIN',reg:'🏢 Зарегистрировать компанию →',twoFA:'Двухэтапная проверка',verify:'Проверить код',resend:'Отправить снова',back:'← Назад',err_creds:'Неверные данные',err_lock:'Аккаунт заблокирован',err_2fa:'Неверный код',err_pin:'Неверный PIN' },
-    tr: { id:'Kullanıcı veya email',pass:'Şifre',btn:'Giriş',pin:'PIN erişimi',reg:'🏢 Şirketimi kaydet →',twoFA:'2 adımlı doğrulama',verify:'Kodu doğrula',resend:'Tekrar gönder',back:'← Geri',err_creds:'Hatalı bilgiler',err_lock:'Hesap kilitlendi',err_2fa:'Hatalı kod',err_pin:'Hatalı PIN' },
-    ar: { id:'المستخدم أو البريد',pass:'كلمة المرور',btn:'دخول',pin:'دخول بـ PIN',reg:'🏢 تسجيل شركتي →',twoFA:'التحقق بخطوتين',verify:'تحقق من الرمز',resend:'إعادة إرسال',back:'→ رجوع',err_creds:'بيانات غير صحيحة',err_lock:'الحساب محظور',err_2fa:'رمز غير صحيح',err_pin:'PIN غير صحيح' },
-    ca: { id:'Usuari o email',pass:'Contrasenya',btn:'Accedir',pin:'Accés PIN',reg:'🏢 Registrar la meva empresa →',twoFA:'Verificació en 2 passos',verify:'Verificar codi',resend:'Reenviar',back:'← Tornar',err_creds:'Credencials incorrectes',err_lock:'Compte bloquejat',err_2fa:'Codi incorrecte',err_pin:'PIN incorrecte' },
-    eu: { id:'Erabiltzailea edo emaila',pass:'Pasahitza',btn:'Sartu',pin:'PIN sarbidea',reg:'🏢 Nire enpresa erregistratu →',twoFA:'2 urratseko egiaztapena',verify:'Kodea egiaztatu',resend:'Berriro bidali',back:'← Itzuli',err_creds:'Datu okerrak',err_lock:'Kontua blokeatuta',err_2fa:'Kode okerra',err_pin:'PIN okerra' },
-    gl: { id:'Usuario ou email',pass:'Contrasinal',btn:'Acceder',pin:'Acceso PIN',reg:'🏢 Rexistrar a miña empresa →',twoFA:'Verificación en 2 pasos',verify:'Verificar código',resend:'Reenviar',back:'← Volver',err_creds:'Credenciais incorrectas',err_lock:'Conta bloqueada',err_2fa:'Código incorrecto',err_pin:'PIN incorrecto' },
+  // Use global I18N from langs.js, fallback to local if not available
+  const I18N = window.I18N || {
+    es: { id:'Usuario o email',pass:'Contraseña',btn:'INGRESAR',pin:'Acceso con PIN',reg:'🏢 REGISTRAR MI EMPRESA →',twoFA:'Verificación en 2 pasos',verify:'Verificar código',resend:'Reenviar código',back:'← Volver',err_creds:'Usuario o contraseña incorrectos',err_lock:'Cuenta bloqueada',err_2fa:'Código incorrecto',err_pin:'PIN incorrecto' },
+    en: { id:'Username or email',pass:'Password',btn:'LOGIN',pin:'PIN access',reg:'🏢 REGISTER MY COMPANY →',twoFA:'2-step verification',verify:'Verify code',resend:'Resend code',back:'← Back',err_creds:'Incorrect credentials',err_lock:'Account locked',err_2fa:'Invalid code',err_pin:'Incorrect PIN' },
+    fr: { id:'Utilisateur ou email',pass:'Mot de passe',btn:'CONNEXION',pin:'Accès PIN',reg:'🏢 INSCRIRE MON ENTREPRISE →',twoFA:'Vérification en 2 étapes',verify:'Vérifier le code',resend:'Renvoyer',back:'← Retour',err_creds:'Identifiants incorrects',err_lock:'Compte bloqué',err_2fa:'Code incorrect',err_pin:'PIN incorrect' },
+    de: { id:'Benutzer oder E-Mail',pass:'Passwort',btn:'ANMELDEN',pin:'PIN-Zugang',reg:'🏢 MEIN UNTERNEHMEN REGISTRIEREN →',twoFA:'2-Stufen-Verifizierung',verify:'Code verifizieren',resend:'Code erneut senden',back:'← Zurück',err_creds:'Falsche Anmeldedaten',err_lock:'Konto gesperrt',err_2fa:'Falscher Code',err_pin:'Falscher PIN' },
+    it: { id:'Utente o email',pass:'Password',btn:'ACCEDI',pin:'Accesso PIN',reg:'🏢 REGISTRA LA MIA AZIENDA →',twoFA:'Verifica in 2 passaggi',verify:'Verifica codice',resend:'Invia di nuovo',back:'← Indietro',err_creds:'Credenziali errate',err_lock:'Account bloccato',err_2fa:'Codice errato',err_pin:'PIN errato' },
+    pt: { id:'Utilizador ou email',pass:'Palavra-passe',btn:'INICIAR SESSÃO',pin:'Acesso PIN',reg:'🏢 REGISTAR A MINHA EMPRESA →',twoFA:'Verificação em 2 etapas',verify:'Verificar código',resend:'Reenviar',back:'← Voltar',err_creds:'Credenciais incorretas',err_lock:'Conta bloqueada',err_2fa:'Código errado',err_pin:'PIN errado' },
+    pl: { id:'Użytkownik lub email',pass:'Hasło',btn:'ZALOGUJ SIĘ',pin:'Dostęp PIN',reg:'🏢 ZAREJESTRUJ MOJĄ FIRMĘ →',twoFA:'Weryfikacja 2-etapowa',verify:'Weryfikuj kod',resend:'Wyślij ponownie',back:'← Wróć',err_creds:'Błędne dane',err_lock:'Konto zablokowane',err_2fa:'Błędny kod',err_pin:'Błędny PIN' },
+    ro: { id:'Utilizator sau email',pass:'Parolă',btn:'CONECTARE',pin:'Acces PIN',reg:'🏢 ÎNREGISTREAZĂ COMPANIA →',twoFA:'Verificare în 2 pași',verify:'Verificați codul',resend:'Retrimite',back:'← Înapoi',err_creds:'Date incorecte',err_lock:'Cont blocat',err_2fa:'Cod incorect',err_pin:'PIN incorect' },
+    nl: { id:'Gebruiker of e-mail',pass:'Wachtwoord',btn:'INLOGGEN',pin:'PIN-toegang',reg:'🏢 BEDRIJF REGISTREREN →',twoFA:'2-staps verificatie',verify:'Code verifiëren',resend:'Opnieuw sturen',back:'← Terug',err_creds:'Onjuiste gegevens',err_lock:'Account geblokkeerd',err_2fa:'Onjuiste code',err_pin:'Onjuiste PIN' },
+    hu: { id:'Felhasználó vagy email',pass:'Jelszó',btn:'BEJELENTKEZÉS',pin:'PIN hozzáférés',reg:'🏢 CÉGREGISZTRÁCIÓ →',twoFA:'2-lépéses ellenőrzés',verify:'Kód ellenőrzése',resend:'Újraküldés',back:'← Vissza',err_creds:'Hibás adatok',err_lock:'Fiók zárolva',err_2fa:'Hibás kód',err_pin:'Hibás PIN' },
+    cs: { id:'Uživatel nebo email',pass:'Heslo',btn:'PŘIHLÁSIT',pin:'PIN přístup',reg:'🏢 REGISTROVAT FIRMU →',twoFA:'2-kroková verifikace',verify:'Ověřit kód',resend:'Znovu odeslat',back:'← Zpět',err_creds:'Nesprávné údaje',err_lock:'Účet zablokován',err_2fa:'Nesprávný kód',err_pin:'Nesprávný PIN' },
   };
-  const T = I18N[lang] || I18N.en;
+  const T = I18N[lang] || I18N.es;
 
   document.body.innerHTML = `
 <style>
@@ -188,11 +175,11 @@ function _showLogin() {
         <button type="button" id="loginEye" onclick="(function(){var i=document.getElementById('loginPass'),b=document.getElementById('loginEye');i.type=i.type==='password'?'text':'password';b.style.opacity=i.type==='text'?'1':'0.4';})()" style="position:absolute;right:10px;background:none;border:none;cursor:pointer;color:#9ca3af;display:flex;align-items:center;opacity:0.4"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
       <div style="text-align:center;margin-bottom:10px">
-        <button class="btn-ingresar" id="btnLogin" onclick="window._auth.loginEmail()">INGRESAR</button>
+        <button class="btn-ingresar" id="btnLogin" onclick="window._auth.loginEmail()">${T.ingresar}</button>
       </div>
       <div class="err" id="loginErr"></div>
       <div style="text-align:center;margin-bottom:14px">
-        <button class="btn-registrar" onclick="window._auth.showRegister()">REGISTRAR MI EMPRESA →</button>
+        <button class="btn-registrar" onclick="window._auth.showRegister()">${T.registrar}</button>
       </div>
     </div>
 
@@ -226,7 +213,13 @@ function _showLogin() {
 
     <!-- LANG SELECTOR inside card -->
     <div style="text-align:center;margin-top:4px">
-      <select id="loginLangSel" onchange="window._auth.setLangDirect(this.value)" style="border:1.5px solid #e2e8f0;background:#f8fafc;border-radius:20px;padding:5px 14px;font-size:11px;color:#64748b;cursor:pointer;font-family:inherit;width:170px">
+      <select id="loginLangSel" data-lang-select="true" style="border:1.5px solid #e2e8f0;background:#f8fafc;border-radius:20px;padding:5px 14px;font-size:11px;color:#64748b;cursor:pointer;font-family:inherit;width:170px">
+        <option value="es">🇪🇸 Español</option>
+        <option value="en">🇬🇧 English</option>
+        <option value="fr">🇫🇷 Français</option>
+        <option value="de">🇩🇪 Deutsch</option>
+        <option value="it">🇮🇹 Italiano</option>
+      </select>
         ${LANGS_UI.map(l=>'<option value="'+l.code+'" '+(l.code===lang?'selected':'')+'>'+l.flag+' '+l.name+'</option>').join('')}
       </select>
     </div>
@@ -584,6 +577,7 @@ function _setLangDirect(code) {
   const savedPass  = document.getElementById('loginPass')?.value || '';
   AppState.set('currentLang', code);
   try { localStorage.setItem('beu_lang', code); } catch(e) {}
+  if(window.setLang) window.setLang(code);
   _showLogin();
   setTimeout(() => {
     const ei = document.getElementById('loginIdent'); if(ei && savedIdent) ei.value = savedIdent;
@@ -594,6 +588,40 @@ function _setLangDirect(code) {
 window._BEUCycleLang = _cycleLang;
 
 // ─── EXPOSE TO WINDOW (inline handlers) ──────────────────────────────
+// ─── LENGUAJE ────────────────────────────────────────────────────────
+function _initLanguageSelector() {
+  const sel = document.getElementById('loginLangSel');
+  if (!sel) return;
+  
+  sel.setAttribute('data-lang-select', 'true');
+  sel.onchange = async (e) => {
+    const code = e.target.value;
+    const uid = AppState.get('currentUser')?.id;
+    // Guardará en Firestore y actualizará TODO
+    if (window.langManager) {
+      await window.langManager.setLanguage(code, uid);
+    }
+  };
+}
+
+// Registrar módulo login en language-manager
+function registerLoginModule() {
+  if (!window.langManager) return;
+  window.langManager.registerModule('login', updateLoginLanguage);
+}
+
+// Función que re-renderiza login con nuevo idioma
+function updateLoginLanguage(lang) {
+  // Volver a renderizar el formulario
+  _showLogin();
+  
+  // Asegurar que el selector tiene el idioma correcto
+  setTimeout(() => {
+    const sel = document.getElementById('loginLangSel');
+    if (sel) sel.value = lang;
+  }, 50);
+}
+
 // ─── EMPRESA SELF-REGISTRATION ────────────────────────────────────────
 function _showRegisterEmpresa() {
   try { window.hideSplash && window.hideSplash(); } catch(e) {}
@@ -606,12 +634,12 @@ body{margin:0;padding:0;font-family:'Inter',system-ui,sans-serif}
 .reg-wrap{position:fixed;inset:0;z-index:2000;background:linear-gradient(135deg,#1e3a5f 0%,#0f172a 100%);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto}
 input{width:100%;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;margin-bottom:10px;background:#fff;color:#0f172a;font-family:inherit;outline:none}
 input:focus{border-color:#2563eb}
-.card{background:#fff;border-radius:16px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);max-height:90vh;overflow-y:auto;min-height:520px;display:flex;flex-direction:column}
-.step{display:none}.step.on{display:flex;flex-direction:column;flex:1}
+.card{background:#fff;border-radius:16px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);max-height:90vh;overflow-y:auto}
+.step{display:none}.step.on{display:block}
 .step-bar{display:flex;gap:4px;margin-bottom:16px}
 .sc{flex:1;height:4px;border-radius:2px;background:#e5e7eb}
 .sc.done{background:#2563eb}.sc.active{background:#93c5fd}
-.btn{width:100%;padding:9px;border:none;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:4px}
+.btn{width:100%;padding:11px;border:none;border-radius:20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px}
 .btn-p{background:#2563eb;color:#fff}.btn-p:hover{background:#1d4ed8}
 .btn-g{background:#0d9f6e;color:#fff}
 .btn-gh{background:#fff;color:#374151;border:1.5px solid #d1d5db}
@@ -625,63 +653,43 @@ select{width:100%;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px
 </style>
 <div class="reg-wrap">
 <div class="card">
-  <div style="text-align:center;margin-bottom:28px">
-    <svg viewBox="0 0 140 140" width="38" height="38" style="margin-bottom:8px"><rect width="140" height="140" rx="28" fill="#030812"/><polygon points="70,10 122,40 122,100 70,130 18,100 18,40" stroke="#00ffc8" stroke-width="2" fill="#00ffc808"/><polygon points="70,28 106,49 106,91 70,112 34,91 34,49" stroke="#00ffc8" stroke-width="1.2" fill="none" opacity="0.4"/><circle cx="70" cy="70" r="9" fill="#00ffc8"/><circle cx="70" cy="70" r="3.5" fill="#030812"/></svg>
-    <div style="font-family:'Oxanium',monospace;font-size:17px;font-weight:700;margin-top:4px"><span style="color:#00b89a">Be</span>Unify<span style="color:#00b89a">T</span></div>
-  </div>
-  <div style="text-align:center;margin-bottom:18px">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00896b" stroke-width="2" stroke-linecap="round" style="vertical-align:middle"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    <span style="font-size:13px;font-weight:700;color:#00896b;vertical-align:middle;margin-left:4px">Registro de Empresa</span>
+  <div style="text-align:center;margin-bottom:20px">
+    <svg viewBox="0 0 140 140" width="32" height="32"><rect width="140" height="140" rx="28" fill="#030812"/><polygon points="70,10 122,40 122,100 70,130 18,100 18,40" stroke="#00ffc8" stroke-width="2" fill="#00ffc808"/><circle cx="70" cy="70" r="9" fill="#00ffc8"/></svg>
+    <div style="font-family:monospace;font-size:16px;font-weight:700;margin-top:6px"><span style="color:#00b89a">Be</span>Unify<span style="color:#00b89a">T</span></div>
+    <div style="font-size:13px;font-weight:700;color:#00896b;margin-top:2px">🏢 Registro de Empresa</div>
   </div>
 
   <!-- STEP 1: IDIOMA -->
   <div class="step on" id="rs1">
     <div class="step-bar"><div class="sc active"></div><div class="sc"></div><div class="sc"></div><div class="sc"></div><div class="sc"></div></div>
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-      <span style="font-size:13px;font-weight:700">Selecciona tu idioma</span>
-    </div>
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">Selecciona tu idioma</div>
     <select id="regLangSel" onchange="window._regLang=this.value" style="width:100%;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;margin-bottom:16px;background:#fff;color:#0f172a;font-family:inherit;cursor:pointer">
       ${LANGS_UI.filter(l=>LANGS.includes(l.code)).map(l=>'<option value="'+l.code+'" '+(l.code===lang?'selected':'')+'>'+l.flag+' '+l.name+'</option>').join('')}
     </select>
-    <div style="flex:1"></div>
-    <button class="btn btn-p" onclick="window._regStep(2)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:middle"><polyline points="9 18 15 12 9 6"/></svg> Continuar</button>
-    <button class="btn btn-gh" style="margin-top:8px" onclick="window._auth.showEmail()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:middle"><polyline points="15 18 9 12 15 6"/></svg> Volver al inicio</button>
-    <div style="text-align:center;margin-top:12px;font-size:11px;color:#94a3b8;font-weight:600">Paso 1 / 5</div>
+    <button class="btn btn-p" onclick="window._regStep(2)">Continuar →</button>
+    <button class="btn btn-gh" style="margin-top:8px" onclick="window._auth.showEmail()">← Volver al inicio</button>
   </div>
 
   <!-- STEP 2: DATOS -->
   <div class="step" id="rs2">
     <div class="step-bar"><div class="sc done"></div><div class="sc active"></div><div class="sc"></div><div class="sc"></div><div class="sc"></div></div>
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <span style="font-size:13px;font-weight:700">Datos de la empresa</span>
-    </div>
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">📋 Datos de la empresa</div>
     <label class="lbl">Nombre empresa *</label><input id="rNom" placeholder="Sertrans S.L.">
-    <label class="lbl">CIF / NIF / VAT / SIREN *</label><input id="rCif" placeholder="B12345678 / FR12345678901 / DE123456789">
+    <label class="lbl">CIF / VAT *</label><input id="rCif" placeholder="B12345678">
     <label class="lbl">Persona de contacto *</label><input id="rCont" placeholder="Juan García">
     <label class="lbl">Teléfono *</label><input id="rTel" type="tel" placeholder="+34 600 000 000">
     <label class="lbl">Email *</label><input id="rEmail" type="email" placeholder="empresa@ejemplo.com">
-    <label class="lbl">Contraseña *</label>
-    <div style="position:relative">
-      <input id="rPass" type="password" placeholder="Mínimo 8 caracteres" style="padding-right:40px">
-      <button type="button" onclick="(function(){var i=document.getElementById('rPass'),b=this;i.type=i.type==='password'?'text':'password';b.style.opacity=i.type==='text'?'1':'0.4';}).call(this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;opacity:0.4;display:flex;align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-    </div>
+    <label class="lbl">Contraseña *</label><input id="rPass" type="password" placeholder="Mínimo 8 caracteres">
     <div class="err" id="rErr2"></div>
-    <div style="flex:1"></div>
-    <button class="btn btn-p" onclick="window._regStep(3)">Siguiente: RGPD <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:middle"><polyline points="9 18 15 12 9 6"/></svg></button>
-    <button class="btn btn-gh" style="margin-top:8px" onclick="window._regStep(1)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:middle"><polyline points="15 18 9 12 15 6"/></svg></button>
-    <div style="text-align:center;margin-top:12px;font-size:11px;color:#94a3b8;font-weight:600">Paso 2 / 5</div>
+    <button class="btn btn-p" onclick="window._regStep(3)">Siguiente: RGPD →</button>
+    <button class="btn btn-gh" style="margin-top:8px" onclick="window._regStep(1)">←</button>
   </div>
 
   <!-- STEP 3: RGPD -->
   <div class="step" id="rs3">
     <div class="step-bar"><div class="sc done"></div><div class="sc done"></div><div class="sc active"></div><div class="sc"></div><div class="sc"></div></div>
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      <span style="font-size:13px;font-weight:700">Consentimiento RGPD</span>
-    </div>
-    <div style="font-size:10px;color:#b45309;padding:5px 9px;background:#fffbeb;border-radius:6px;border:1px solid #fde68a;margin-bottom:8px;display:flex;align-items:center;gap:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Desplázate hasta el final para aceptar</div>
+    <div style="font-size:13px;font-weight:700;margin-bottom:8px">📄 Consentimiento RGPD</div>
+    <div style="font-size:10px;color:#b45309;padding:5px 9px;background:#fffbeb;border-radius:6px;border:1px solid #fde68a;margin-bottom:8px">⬇️ Desplázate hasta el final para aceptar</div>
     <div class="rgpd-body" id="rRgpdDoc" onscroll="if(this.scrollTop+this.clientHeight>=this.scrollHeight-10){document.getElementById('rRgpdArea').style.opacity='1';document.getElementById('rRgpdArea').style.pointerEvents='auto';}">
       <h3 style="margin-bottom:8px">Protección de Datos — RGPD</h3>
       <p>El responsable del tratamiento es el organizador del evento. Los datos se tratarán exclusivamente para la gestión logística y de acceso al recinto. Se conservarán hasta 2 años después del evento.</p>
@@ -700,23 +708,17 @@ select{width:100%;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px
       </label>
     </div>
     <div class="err" id="rErr3" style="margin-top:8px"></div>
-    <div style="flex:1"></div>
-    <button class="btn btn-p" style="margin-top:10px" onclick="window._regStep(4)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="vertical-align:middle"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Enviar código de firma</button>
-    <button class="btn btn-gh" style="margin-top:8px" onclick="window._regStep(2)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:middle"><polyline points="15 18 9 12 15 6"/></svg></button>
-    <div style="text-align:center;margin-top:12px;font-size:11px;color:#94a3b8;font-weight:600">Paso 3 / 5</div>
+    <button class="btn btn-p" style="margin-top:10px" onclick="window._regStep(4)">📧 Enviar código de firma →</button>
+    <button class="btn btn-gh" style="margin-top:8px" onclick="window._regStep(2)">←</button>
   </div>
 
   <!-- STEP 4: OTP -->
   <div class="step" id="rs4">
     <div class="step-bar"><div class="sc done"></div><div class="sc done"></div><div class="sc done"></div><div class="sc active"></div><div class="sc"></div></div>
-    <div style="text-align:center;margin-bottom:12px">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-linecap="round" style="margin-bottom:6px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-      <div style="font-size:13px;font-weight:700;margin-bottom:4px">Código de verificación enviado</div>
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:34px;margin-bottom:8px">📧</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">Código enviado</div>
       <div id="rOtpHint" style="font-size:11px;color:#6b7280"></div>
-    </div>
-    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:12px;display:flex;align-items:flex-start;gap:6px">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <span style="font-size:11px;color:#92400e;line-height:1.4">Revisa tu bandeja de entrada y carpeta de spam. El código expira en 10 minutos.</span>
     </div>
     <div class="otp-row" id="rOtpBoxes">
       ${[0,1,2,3,4,5].map(i=>`<div class="otp-b" id="rob${i}"></div>`).join('')}
@@ -726,20 +728,16 @@ select{width:100%;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px
       oninput="window._regOtpType(this.value)"
       placeholder="000000">
     <div class="err" id="rErr4"></div>
-    <div style="flex:1"></div>
-    <button class="btn btn-g" id="rOtpConfirmBtn" onclick="window._regConfirm()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:middle"><polyline points="20 6 9 17 4 12"/></svg> Confirmar firma y registrar</button>
-    <button class="btn btn-gh" style="margin-top:8px" onclick="window._regStep(3)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:middle"><polyline points="15 18 9 12 15 6"/></svg> Volver</button>
-    <div style="text-align:center;margin-top:12px;font-size:11px;color:#94a3b8;font-weight:600">Paso 4 / 5</div>
+    <button class="btn btn-g" id="rOtpConfirmBtn" onclick="window._regConfirm()">✓ Confirmar firma y registrar</button>
+    <button class="btn btn-gh" style="margin-top:8px" onclick="window._regStep(3)">← Volver</button>
   </div>
 
   <!-- STEP 5: ÉXITO -->
   <div class="step" id="rs5" style="text-align:center">
-    <div style="margin-top:20px"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0d9f6e" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 16 10"/></svg></div>
-    <div style="font-size:15px;font-weight:800;color:#0d9f6e;margin-top:12px;margin-bottom:8px">¡Registro completado!</div>
-    <div style="font-size:12px;color:#374151;margin-bottom:16px;line-height:1.6">Tu empresa está registrada. Un administrador la verificará en breve.<br><b>Ya puedes ingresar a la web</b> y comenzar a cargar tus datos.</div>
-    <div style="flex:1"></div>
-    <button class="btn btn-g" onclick="window._regFinish()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:middle"><polyline points="9 18 15 12 9 6"/></svg> Entrar al portal</button>
-    <div style="text-align:center;margin-top:12px;font-size:11px;color:#94a3b8;font-weight:600">Paso 5 / 5</div>
+    <div style="font-size:48px;margin-bottom:12px">✅</div>
+    <div style="font-size:15px;font-weight:800;color:#0d9f6e;margin-bottom:8px">¡Registro completado!</div>
+    <div style="font-size:12px;color:#374151;margin-bottom:16px;line-height:1.6">Tu empresa está registrada. Un administrador la verificará en breve. Ya puedes acceder a tu área.</div>
+    <button class="btn btn-g" onclick="window._regFinish()">→ Entrar al portal</button>
   </div>
 </div>
 </div>`;
@@ -850,6 +848,16 @@ select{width:100%;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px
       _showLogin(); // fallback to login
     }
   };
+}
+
+// Registrar módulo auth para cambios de idioma
+function updateAuthLanguage(lang) {
+  const loginForm = document.getElementById('loginFormEmail');
+  if (loginForm) _showLogin();
+}
+
+if (window.langManager) {
+  window.langManager.registerModule('auth', updateAuthLanguage);
 }
 
 window._auth = {
