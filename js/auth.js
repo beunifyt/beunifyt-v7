@@ -213,7 +213,7 @@ function _showLogin() {
 
     <!-- LANG SELECTOR inside card -->
     <div style="text-align:center;margin-top:4px">
-      <select id="loginLangSel" data-lang-select="true" style="border:1.5px solid #e2e8f0;background:#f8fafc;border-radius:20px;padding:5px 14px;font-size:11px;color:#64748b;cursor:pointer;font-family:inherit;width:170px">
+      <select id="loginLangSel" data-lang-select="true" onchange="window.changeLanguage(this.value)" style="border:1.5px solid #e2e8f0;background:#f8fafc;border-radius:20px;padding:5px 14px;font-size:11px;color:#64748b;cursor:pointer;font-family:inherit;width:170px">
         <option value="es">🇪🇸 Español</option>
         <option value="en">🇬🇧 English</option>
         <option value="fr">🇫🇷 Français</option>
