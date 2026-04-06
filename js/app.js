@@ -2,16 +2,6 @@
 import { initFirestore } from './firestore.js';
 import { initAuth }      from './auth.js';
 import { AppState }      from './state.js';
-import { langManager }   from './language-manager.js';
-import './langs.js';
-
-// Inicializar Language Manager cuando AppState esté listo
-AppState.subscribe('currentUser', async (user) => {
-  if (user && user.id) {
-    console.log('🌍 Inicializando idioma para usuario:', user.id);
-    await langManager.init(user.id);
-  }
-});
 
 const FIREBASE_CONFIG = window.BEU_CONFIG || {
   apiKey:            'AIzaSyBKMfHEcnRAJJ9zotIXu3hluFpyjwQDfq4',

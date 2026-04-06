@@ -185,39 +185,46 @@ for fp in all_js():
         if '//' in m.group(1): fail(f"{rel}: path '{m.group(1)}' tiene //")
 ok("Paths Firestore OK")
 
-# 13. DEFINICIONES DUPLICADAS window.xxx
-print("\n1️⃣3️⃣  DEFINICIONES DUPLICADAS window.xxx")
-window_defs = collections.defaultdict(list)
+# 13. VARIABLES TOP-LEVEL DUPLICADAS (mismo archivo)
+print("\n1️⃣3️⃣  VARIABLES TOP-LEVEL DUPLICADAS")
 for fp in all_js():
     rel = fp.replace(DIR+'/', '')
-    with open(fp) as f:
-        lines = f.readlines()
-    for i, line in enumerate(lines, 1):
-        for m in re.finditer(r'window\.(_\w+)\s*=\s*\{', line):
-            key = m.group(1)
-            window_defs[key].append((rel, i))
-for key, locs in window_defs.items():
-    if len(locs) > 1:
-        fail(f"window.{key} definido {len(locs)} veces: {', '.join(f'{f}:{l}' for f,l in locs)}")
-ok("0 definiciones duplicadas window.xxx")
+    with open(fp) as f: lines = f.readlines()
+    top_vars = collections.defaultdict(list)
+    brace_depth = 0
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith('import ') or stripped.startswith('//') or stripped.startswith('*'): continue
+        # Only flag declarations that START at depth 0 AND aren't inside a function on the same line
+        if brace_depth == 0 and not stripped.startswith('function ') and not stripped.startswith('async function '):
+            # Skip lines that contain their own function scope (one-liners)
+            if '{' not in stripped or stripped.startswith('let ') or stripped.startswith('const ') or stripped.startswith('var '):
+                for m in re.finditer(r'^(let|const|var)\s+(.+)', stripped):
+                    for vname in re.findall(r'([A-Za-z_]\w{2,})', m.group(2).split('=')[0]):
+                        top_vars[vname].append(i+1)
+        brace_depth += line.count('{') - line.count('}')
+        if brace_depth < 0: brace_depth = 0
+    for vname, locs in top_vars.items():
+        if len(locs) > 1:
+            fail(f"{rel}: '{vname}' declarada {len(locs)}x (líneas {locs})")
+if ERRORS == 0: ok("0 duplicadas")
 
-# 14. SINTAXIS ROTA: window.xxx = { function
-print("\n1️⃣4️⃣  SINTAXIS ROTA: window.xxx = {{ function")
-broken_syntax = False
+# 14. IMPORT vs FUNCTION NAME COLLISIONS
+print("\n1️⃣4️⃣  IMPORT vs FUNCTION COLLISIONS")
 for fp in all_js():
     rel = fp.replace(DIR+'/', '')
-    with open(fp) as f:
-        content = f.read()
-    # Detecta: window._auth = { seguido de function en línea siguiente
-    if re.search(r'window\._\w+\s*=\s*\{\s*\n\s*function\s+\w+', content):
-        lines = content.split('\n')
-        for i, line in enumerate(lines):
-            if re.search(r'window\._\w+\s*=\s*\{', line):
-                if i+1 < len(lines) and re.search(r'^\s*function\s+\w+', lines[i+1]):
-                    fail(f"{rel}:{i+1}: window object abierto con {{ pero función directa sin cerrar")
-                    broken_syntax = True
-if not broken_syntax:
-    ok("0 sintaxis rota window.xxx = { function")
+    with open(fp) as f: c = f.read()
+    imp_names = set()
+    for m in re.finditer(r'import\s*\{([^}]+)\}', c):
+        for n in m.group(1).split(','):
+            n = n.strip().split(' as ')[0].strip()
+            if n: imp_names.add(n)
+    func_names = set()
+    for m in re.finditer(r'^(?:async\s+)?function\s+(\w+)', c, re.MULTILINE):
+        func_names.add(m.group(1))
+    for name in sorted(imp_names & func_names):
+        fail(f"{rel}: '{name}' importado Y declarado como función")
+if ERRORS == 0: ok("0 colisiones")
 
 # RESULTADO
 print("\n" + "═" * 60)
@@ -225,3 +232,4 @@ print(f"  RESULTADO: {ERRORS} errores, {WARNS} warnings")
 print(f"  {'🟢 LISTO PARA DEPLOY' if ERRORS == 0 else '🔴 NO DEPLOYAR — corregir errores'}")
 print("═" * 60)
 sys.exit(ERRORS)
+
