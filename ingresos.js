@@ -52,7 +52,7 @@ function paint() {
 
       <!-- TOOLBAR -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
-        <input id="ing-search" type="text" placeholder="${t('search') || 'Buscar'}" value="${safeHtml(_searchTerm)}" style="flex:1;min-width:180px;padding:8px 12px;border:1px solid ${border};border-radius:8px;font-size:12px;background:${cardBg};color:inherit;outline:none">
+        <input id="ing-search" type="text" placeholder="${t('search')}" value="${safeHtml(_searchTerm)}" style="flex:1;min-width:180px;padding:8px 12px;border:1px solid ${border};border-radius:8px;font-size:12px;background:${cardBg};color:inherit;outline:none">
         ${p.canAdd ? `<button id="ing-add" style="padding:8px 14px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">+ ${t('add')}</button>` : ''}
         ${p.canExport ? `<button id="ing-export" style="padding:8px 14px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">${t('export')}</button>` : ''}
       </div>

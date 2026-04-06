@@ -27,7 +27,7 @@ export function renderRecuperar(container) {
 
   container.querySelector('#rec-send').onclick = async () => {
     const email = container.querySelector('#rec-email').value.trim();
-    if (!email) { toast('Ingresa tu email', '#f59e0b'); return; }
+    if (!email) { toast(trFree('auth','email'), '#f59e0b'); return; }
     try {
       const { initFirestore } = await import('./firestore.js');
       const { FIREBASE_CONFIG } = await import('./config.js');
@@ -39,7 +39,7 @@ export function renderRecuperar(container) {
       toast('Email de recuperación enviado ✓', '#10b981');
       setTimeout(() => import('./auth.js').then(m => m.renderLogin(container)), 2000);
     } catch (e) {
-      toast('Error: ' + (e.message || 'No se pudo enviar'), '#ef4444');
+      toast(trFree('shell','error') + ': ' + (e.message || ''), '#ef4444');
     }
   };
 }

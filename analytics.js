@@ -16,7 +16,7 @@ export function render(c, u) {
   return () => {};
 }
 
-function t(k) { return trFree('shell', k) || k; }
+function t(k) { return trFree('analytics', k) || trFree('shell', k) || k; }
 
 function paint() {
   const dk = _u.tema === 'dark', bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
@@ -201,10 +201,10 @@ async function exportAnalytics() {
       Matricula: d.matricula, Empresa: d.empresa, Hall: d.hall, Fecha: d.fecha, Estado: d.estado
     })));
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Analytics');
+    XLSX.utils.book_append_sheet(wb, ws, t('title'));
     XLSX.writeFile(wb, `Analytics_${todayISO()}.xlsx`);
     toast(t('export') + ' ✓', '#10b981');
   } catch (e) { toast(t('error'), '#ef4444'); }
 }
 
-function t(k) { return trFree('shell', k) || k; }
+function t(k) { return trFree('analytics', k) || trFree('shell', k) || k; }

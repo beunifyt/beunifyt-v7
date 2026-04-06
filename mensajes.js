@@ -8,7 +8,7 @@ import { safeHtml, toast, nowLocal } from './utils.js';
 let _c, _u, _data = [], _unsub;
 
 export function render(c, u) { _c = c; _u = u; _data = []; paint(); loadData(); return () => { if (_unsub) _unsub(); }; }
-function t(k) { return trFree('shell', k) || k; }
+function t(k) { return trFree('mensajes', k) || trFree('shell', k) || k; }
 
 function paint() {
   const dk = _u.tema === 'dark', bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
@@ -43,7 +43,7 @@ function renderList() {
     const urgent = d.urgencia === 'alta';
     return `<div style="background:${dk ? '#1e293b' : '#fff'};border:1px solid ${urgent ? '#ef4444' : (dk ? '#334155' : '#e2e8f0')};border-radius:10px;padding:12px;${d.leido ? 'opacity:0.6;' : ''}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <span style="font-size:13px;font-weight:700">${urgent ? '🔴 ' : ''}${safeHtml(d.titulo || 'Sin título')}</span>
+        <span style="font-size:13px;font-weight:700">${urgent ? '🔴 ' : ''}${safeHtml(d.titulo || t('sinTitulo'))}</span>
         <span style="font-size:10px;color:#94a3b8">${safeHtml(d.fecha || '')}</span>
       </div>
       <div style="font-size:12px;color:#64748b;margin-bottom:8px">${safeHtml(d.contenido || '')}</div>

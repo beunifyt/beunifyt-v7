@@ -9,7 +9,7 @@ import { toast, todayISO } from './utils.js';
 let _c, _u;
 
 export function render(c, u) { _c = c; _u = u; paint(); return () => {}; }
-function t(k) { return trFree('shell', k) || k; }
+function t(k) { return trFree('migracion', k) || trFree('shell', k) || k; }
 
 function paint() {
   const dk = _u.tema === 'dark', bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
@@ -64,7 +64,7 @@ async function doExport() {
 
 async function doImport() {
   const file = _c.querySelector('#mig-file').files[0];
-  if (!file) { toast('Selecciona un archivo', '#f59e0b'); return; }
+  if (!file) { toast(t('selArchivo'), '#f59e0b'); return; }
   if (!confirm('¿Importar datos? Los registros existentes con el mismo ID se sobrescribirán.')) return;
   try {
     toast('Importando...', '#3b82f6');
@@ -99,6 +99,6 @@ async function doWipe() {
         for (const d of docs) await fsDel(`${col}/${d.id}`);
       } catch {}
     }
-    toast('Datos borrados', '#ef4444');
+    toast(t('borrado'), '#ef4444');
   } catch (e) { toast(t('error'), '#ef4444'); }
 }

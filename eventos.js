@@ -8,7 +8,7 @@ import { safeHtml, toast, nowLocal } from './utils.js';
 let _c, _u, _data = [];
 
 export function render(c, u) { _c = c; _u = u; _data = []; paint(); loadData(); return () => {}; }
-function t(k) { return trFree('shell', k) || k; }
+function t(k) { return trFree('eventos', k) || trFree('shell', k) || k; }
 
 function paint() {
   const dk = _u.tema === 'dark', bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
@@ -46,13 +46,13 @@ function renderCards() {
     return `<div style="background:${dk ? '#1e293b' : '#fff'};border:1px solid ${activo ? '#10b981' : (dk ? '#334155' : '#e2e8f0')};border-radius:10px;padding:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <span style="font-size:14px;font-weight:700">${safeHtml(d.nombre || d.id)}</span>
-        <span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;${activo ? 'background:#dcfce7;color:#166534' : 'background:#fecaca;color:#7f1d1d'}">${activo ? 'Activo' : 'Inactivo'}</span>
+        <span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;${activo ? 'background:#dcfce7;color:#166534' : 'background:#fecaca;color:#7f1d1d'}">${activo ? t('activo') : t('inactivo')}</span>
       </div>
       <div style="font-size:11px;color:#64748b;margin-bottom:4px">Recinto: ${safeHtml(d.recinto || '—')}</div>
       <div style="font-size:11px;color:#94a3b8;margin-bottom:8px">${safeHtml(d.fechaInicio || '—')} → ${safeHtml(d.fechaFin || '—')}</div>
       <div style="display:flex;gap:6px">
         <button onclick="window._beuEditEv('${d.id}')" style="padding:4px 10px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">${t('edit')}</button>
-        <button onclick="window._beuToggleEv('${d.id}')" style="padding:4px 10px;background:${activo ? '#f59e0b' : '#10b981'};color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">${activo ? 'Desactivar' : 'Activar'}</button>
+        <button onclick="window._beuToggleEv('${d.id}')" style="padding:4px 10px;background:${activo ? '#f59e0b' : '#10b981'};color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">${activo ? t('desactivar') : t('activar')}</button>
       </div>
     </div>`;
   }).join('');

@@ -78,7 +78,7 @@ async function loadDashData(usuario) {
         if (latest) {
           const sorted = data.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 5);
           if (sorted.length === 0) {
-            latest.textContent = tr('shell', 'noData') || 'Sin datos';
+            latest.textContent = tr('shell', 'noData') || trFree('shell','noData');
           } else {
             latest.innerHTML = sorted.map(d =>
               `<div style="padding:4px 0;border-bottom:1px solid rgba(0,0,0,.05)">${safeHtml(d.matricula || '—')} · ${safeHtml(d.empresa || '—')} · ${safeHtml(d.fecha || '—')}</div>`

@@ -8,7 +8,7 @@ import { safeHtml, toast, nowLocal, debounce } from './utils.js';
 let _c, _u, _data = [], _filtered = [], _search = '';
 
 export function render(c, u) { _c = c; _u = u; _data = []; _filtered = []; paint(); loadData(); return () => {}; }
-function t(k) { return trFree('shell', k) || k; }
+function t(k) { return trFree('empresas', k) || trFree('shell', k) || k; }
 
 function paint() {
   const dk = _u.tema === 'dark', bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
@@ -69,7 +69,7 @@ function openModal(editId = null) {
   m.innerHTML = `<div style="background:${dk ? '#1e293b' : '#fff'};border-radius:14px;padding:20px;max-width:440px;width:100%;color:inherit">
     <div style="font-size:15px;font-weight:700;margin-bottom:16px">${editId ? t('edit') : t('add')} Empresa</div>
     <div style="display:grid;gap:10px">
-      ${[{k:'nombre',l:'Nombre'},{k:'contacto',l:'Contacto'},{k:'telefono',l:'Teléfono'},{k:'email',l:'Email'},{k:'nivel',l:'Nivel'},{k:'direccion',l:'Dirección'}].map(f => `<div><label style="font-size:10px;font-weight:600;color:#64748b">${f.l}</label><input data-f="${f.k}" value="${safeHtml(r[f.k] || '')}" style="width:100%;padding:8px;border:1px solid ${dk ? '#475569' : '#e2e8f0'};border-radius:6px;font-size:12px;background:${dk ? '#0f172a' : '#f8fafc'};color:inherit"></div>`).join('')}
+      ${[{k:'nombre',l:t('nombre')},{k:'contacto',l:t('contacto')},{k:'telefono',l:t('telefono')},{k:'email',l:t('email')},{k:'nivel',l:t('nivel')},{k:'direccion',l:t('direccion')}].map(f => `<div><label style="font-size:10px;font-weight:600;color:#64748b">${f.l}</label><input data-f="${f.k}" value="${safeHtml(r[f.k] || '')}" style="width:100%;padding:8px;border:1px solid ${dk ? '#475569' : '#e2e8f0'};border-radius:6px;font-size:12px;background:${dk ? '#0f172a' : '#f8fafc'};color:inherit"></div>`).join('')}
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
       <button id="en" style="padding:8px 16px;border:1px solid ${dk ? '#475569' : '#e2e8f0'};border-radius:8px;background:none;cursor:pointer;font-size:12px;color:inherit">${t('cancel')}</button>

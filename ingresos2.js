@@ -123,7 +123,7 @@ function openModal(editId=null) {
   document.body.appendChild(m);
 }
 
-async function exportData(){try{toast(trFree('shell','loading'),'#3b82f6');const X=await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs');const ws=X.utils.json_to_sheet(_filtered.map(d=>({[t('matricula')]:d.matricula,[t('empresa')]:d.empresa,[t('hall')]:d.hall,[t('horaIngreso')]:d.fecha,[t('estado')]:d.estado})));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Accesos');X.writeFile(wb,`Accesos_${new Date().toISOString().slice(0,10)}.xlsx`);toast(t('export')+' ✓','#10b981');}catch(e){toast(trFree('shell','error'),'#ef4444');}}
+async function exportData(){try{toast(trFree('shell','loading'),'#3b82f6');const X=await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs');const ws=X.utils.json_to_sheet(_filtered.map(d=>({[t('matricula')]:d.matricula,[t('empresa')]:d.empresa,[t('hall')]:d.hall,[t('horaIngreso')]:d.fecha,[t('estado')]:d.estado})));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,t('title'));X.writeFile(wb,`${t('title')}_${new Date().toISOString().slice(0,10)}.xlsx`);toast(t('export')+' ✓','#10b981');}catch(e){toast(trFree('shell','error'),'#ef4444');}}
 
 window._beuEditAcc=id=>openModal(id);
 window._beuDelAcc=async id=>{if(!confirm(t('confirm')+'?'))return;try{const{fsDel}=await import('./firestore.js');await fsDel(`${COLLECTION}/${id}`);toast(t('delete')+' ✓','#f59e0b');}catch(e){toast(trFree('shell','error'),'#ef4444');}};

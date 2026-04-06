@@ -16,7 +16,7 @@ export function render(c, u) {
   return () => {};
 }
 
-function t(k) { return tr('impresion', k) || trFree('shell', k) || k; }
+function t(k) { return trFree('impresion', k) || trFree('shell', k) || k; }
 
 function paint() {
   const dk = _u.tema === 'dark', bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
@@ -25,9 +25,9 @@ function paint() {
     <div style="max-width:1100px;margin:0 auto">
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
         <select id="imp-plantilla" style="padding:8px 12px;border:1px solid ${bd};border-radius:8px;font-size:12px;background:${bg};color:inherit;min-width:200px">
-          <option value="">— ${t('select') || 'Seleccionar plantilla'} —</option>
+          <option value="">— ${t('select') || t('select')} —</option>
         </select>
-        <button id="imp-new" style="padding:8px 14px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">+ ${t('add') || 'Nueva'}</button>
+        <button id="imp-new" style="padding:8px 14px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">+ ${t('add') || t('nueva')}</button>
         <button id="imp-print" style="padding:8px 14px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">${trFree('shell', 'print')}</button>
         <button id="imp-qr" style="padding:8px 14px;background:#8b5cf6;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">QR</button>
       </div>
@@ -35,13 +35,13 @@ function paint() {
       <!-- PREVIEW -->
       <div style="display:grid;grid-template-columns:1fr 300px;gap:16px">
         <div id="imp-canvas" style="background:${bg};border:1px solid ${bd};border-radius:10px;min-height:500px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px;padding:20px">
-          ${t('select') || 'Selecciona una plantilla para previsualizar'}
+          ${t('select') || t('preview')}
         </div>
         <div style="background:${bg};border:1px solid ${bd};border-radius:10px;padding:14px">
-          <div style="font-size:13px;font-weight:700;margin-bottom:10px">${t('settings') || 'Configuración'}</div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px">${t('settings') || t('config')}</div>
           <div id="imp-config" style="font-size:12px;color:#64748b">
             <div style="margin-bottom:8px">
-              <label style="font-size:10px;font-weight:600;display:block;margin-bottom:2px">${t('size') || 'Tamaño'}</label>
+              <label style="font-size:10px;font-weight:600;display:block;margin-bottom:2px">${t('size') || t('size')}</label>
               <select id="imp-size" style="width:100%;padding:6px;border:1px solid ${bd};border-radius:6px;font-size:12px;background:${bg};color:inherit">
                 <option value="A4">A4</option>
                 <option value="A5">A5</option>
@@ -49,7 +49,7 @@ function paint() {
               </select>
             </div>
             <div style="margin-bottom:8px">
-              <label style="font-size:10px;font-weight:600;display:block;margin-bottom:2px">${t('destino') || 'Destino'}</label>
+              <label style="font-size:10px;font-weight:600;display:block;margin-bottom:2px">${t('destino') || t('destino')}</label>
               <select id="imp-dest" style="width:100%;padding:6px;border:1px solid ${bd};border-radius:6px;font-size:12px;background:${bg};color:inherit">
                 <option value="ref">Referencia</option>
                 <option value="ing">Ingresos</option>
@@ -117,7 +117,7 @@ async function newPlantilla() {
 }
 
 function doPrint() {
-  if (!_selectedPlantilla) { toast('Selecciona una plantilla', '#f59e0b'); return; }
+  if (!_selectedPlantilla) { toast(t('select'), '#f59e0b'); return; }
   window.print();
 }
 

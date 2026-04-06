@@ -3,7 +3,7 @@
 // Define tabs, permisos, recinto, idioma, 2FA
 // ═══════════════════════════════════════════════════════════
 
-import { trFree } from './langs.js';
+import { trFree, tr } from './langs.js';
 import { safeHtml, toast, nowLocal } from './utils.js';
 
 const ALL_TABS = ['dash','ingresos','ingresos2','flota','conductores','agenda','analytics','vehiculos','auditoria','recintos','usuarios','eventos','papelera','mensajes','impresion','empresas','migracion'];
@@ -95,10 +95,10 @@ function openModal(editId = null) {
       </select></div>
     </div>
     <div style="margin-top:12px"><label style="font-size:10px;font-weight:600;color:#64748b;display:block;margin-bottom:6px">Tabs autorizados</label>
-      <div style="display:flex;flex-wrap:wrap;gap:4px">${ALL_TABS.map(tab => `<label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:3px 8px;border-radius:6px;background:${dk ? '#0f172a' : '#f1f5f9'};cursor:pointer"><input type="checkbox" data-tab="${tab}" ${(r.tabs || []).includes(tab) ? 'checked' : ''}>${tab}</label>`).join('')}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${ALL_TABS.map(tab => `<label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:3px 8px;border-radius:6px;background:${dk ? '#0f172a' : '#f1f5f9'};cursor:pointer"><input type="checkbox" data-tab="${tab}" ${(r.tabs || []).includes(tab) ? 'checked' : ''}>${trFree('tabs',tab)||tab}</label>`).join('')}</div>
     </div>
     <div style="margin-top:12px"><label style="font-size:10px;font-weight:600;color:#64748b;display:block;margin-bottom:6px">Permisos</label>
-      <div style="display:flex;flex-wrap:wrap;gap:4px">${ALL_PERMS.map(p => `<label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:3px 8px;border-radius:6px;background:${dk ? '#0f172a' : '#f1f5f9'};cursor:pointer"><input type="checkbox" data-perm="${p}" ${(r.permisos || {})[p] ? 'checked' : ''}>${p}</label>`).join('')}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${ALL_PERMS.map(p => `<label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:3px 8px;border-radius:6px;background:${dk ? '#0f172a' : '#f1f5f9'};cursor:pointer"><input type="checkbox" data-perm="${p}" ${(r.permisos || {})[p] ? 'checked' : ''}>${trFree('permisos',p)||p}</label>`).join('')}</div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
       <button id="un" style="padding:8px 16px;border:1px solid ${dk ? '#475569' : '#e2e8f0'};border-radius:8px;background:none;cursor:pointer;font-size:12px;color:inherit">${t('cancel')}</button>

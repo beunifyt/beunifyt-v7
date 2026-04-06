@@ -86,8 +86,8 @@ function paint() {
 
   _container.querySelector('#loginBtn').onclick = () => doLogin();
   _container.querySelector('#loginPass').onkeydown = (e) => { if(e.key==='Enter') doLogin(); };
-  _container.querySelector('#registerBtn').onclick = () => { import('./empresa_form.js').then(m=>m.renderRegistro(_container)).catch(()=>toast('Error','#dc2626')); };
-  _container.querySelector('#forgotLink').onclick = (e) => { e.preventDefault(); import('./recuperar.js').then(m=>m.renderRecuperar(_container)).catch(()=>toast('Error','#dc2626')); };
+  _container.querySelector('#registerBtn').onclick = () => { import('./empresa_form.js').then(m=>m.renderRegistro(_container)).catch(()=>toast(trFree('shell','error'),'#dc2626')); };
+  _container.querySelector('#forgotLink').onclick = (e) => { e.preventDefault(); import('./recuperar.js').then(m=>m.renderRecuperar(_container)).catch(()=>toast(trFree('shell','error'),'#dc2626')); };
 }
 
 async function doLogin() {
