@@ -2,6 +2,40 @@ function getSort(tab) {
   const defs = {ingresos:{col:'pos',dir:'desc'},ingresos2:{col:'pos',dir:'desc'},agenda:{col:'hora',dir:'asc'},flota:{col:'posicion',dir:'asc'},vehiculos:{col:'entrada',dir:'desc'}};
   return (DB.tabSorts && DB.tabSorts[tab]) || defs[tab] || {col:'',dir:'asc'};
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LANGUAGE MANAGER INTEGRATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function initOperatorLanguage() {
+  if (window.langManager) {
+    window.langManager.registerModule('operator', updateOperatorLanguage);
+  }
+  console.log('✅ Operator module registered for language updates');
+}
+
+function updateOperatorLanguage(lang) {
+  window.CUR_LANG = lang;
+  console.log(`🌍 Operator: Actualizando a ${lang}`);
+  
+  // Re-renderizar el tab actual
+  goTab(curTab);
+  
+  // Actualizar todos los selectores de idioma
+  setTimeout(() => {
+    document.querySelectorAll('[data-lang-select]').forEach(sel => {
+      sel.value = lang;
+    });
+  }, 50);
+}
+
+window._operatorModule = {
+  init: initOperatorLanguage,
+  updateLanguage: updateOperatorLanguage
+};
+
+// Llamar init cuando module cargue
+initOperatorLanguage();
 function setSort(tab, col) {
   const cur = getSort(tab);
   const dir = (cur.col === col && cur.dir === 'asc') ? 'desc' : 'asc';
@@ -523,7 +557,14 @@ function renderHdr() {
     <div style="display:flex;gap:4px;align-items:center">
       ${msgs ? `<div class="hdr-cnt" style="border-color:var(--red);background:var(--rll);cursor:pointer" onclick="window._op.goTab('mensajes')"><div class="hdr-cv" style="color:var(--red)">${msgs}</div><div class="hdr-cl">MSG</div></div>` : ''}
       ${agH  ? `<div class="hdr-cnt" style="border-color:#c7d2fe;background:#eef2ff;cursor:pointer" onclick="window._op.goTab('agenda')"><div class="hdr-cv" style="color:#4f46e5">${agH}</div><div class="hdr-cl">AGENDA</div></div>` : ''}
-    </div>`;
+    </div>
+    <select data-lang-select="true" onchange="window.changeLanguage(this.value)" style="margin-left:auto;height:28px;padding:4px 8px;border:1.5px solid var(--border);border-radius:12px;font-size:10px;background:var(--bg3);color:var(--text);cursor:pointer;font-family:inherit">
+      <option value="es">🇪🇸 ES</option>
+      <option value="en">🇬🇧 EN</option>
+      <option value="fr">🇫🇷 FR</option>
+      <option value="de">🇩🇪 DE</option>
+      <option value="it">🇮🇹 IT</option>
+    </select>`;
 }
 
 function getActiveEvent() {
