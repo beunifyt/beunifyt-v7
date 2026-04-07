@@ -1,93 +1,43 @@
-// ═══════════════════════════════════════════════════════════
-// BeUnifyT v8 — app.js — Punto de entrada
-// Revisa sesión → login o carga directa
-// ═══════════════════════════════════════════════════════════
-import { AppState } from './state.js';
-import { detectLang } from './langs.js';
-const SPLASH = document.getElementById('splash');
-const APP = document.getElementById('app');
-async function boot() {
-  try {
-    // Detectar idioma temporal del navegador
-    const browserLang = detectLang(navigator.language);
-    AppState.set('currentLang', browserLang);
-    // ¿Hay sesión guardada?
-    const raw = localStorage.getItem('beu_session');
-    if (raw) {
-      try {
-        const session = JSON.parse(raw);
-        const age = Date.now() - (session.timestamp || 0);
-        // Sesión válida 24h
-        if (age < 86400000 && session.uid) {
-          AppState.set('currentLang', session.idioma || browserLang);
-          await resumeSession(session);
-          return;
-        }
-      } catch (e) { /* sesión corrupta, ir a login */ }
-      localStorage.removeItem('beu_session');
-    }
-    // No hay sesión → pintar login
-    showLogin();
-  } catch (e) {
-    console.error('Boot error:', e);
-    showLogin();
+// BeUnifyT v7 — app.js — Entry point
+import { initFirestore } from './firestore.js';
+import { initAuth }      from './auth.js';
+import { AppState }      from './state.js';
+import { langManager }   from './language-manager.js';
+import './langs.js';
+
+// Inicializar Language Manager cuando AppState esté listo
+AppState.subscribe('currentUser', async (user) => {
+  if (user && user.id) {
+    console.log('🌍 Inicializando idioma para usuario:', user.id);
+    await langManager.init(user.id);
   }
-}
-async function resumeSession(session) {
+});
+
+const FIREBASE_CONFIG = window.BEU_CONFIG || {
+  apiKey:            'AIzaSyBKMfHEcnRAJJ9zotIXu3hluFpyjwQDfq4',
+  authDomain:        'beunifyt-prod.firebaseapp.com',
+  projectId:         'beunifyt-prod',
+  storageBucket:     'beunifyt-prod.firebasestorage.app',
+  messagingSenderId: '392352190516',
+  appId:             '1:392352190516:web:fb4431ca96ab29a5feba61',
+};
+
+function _status(m) { try { window.setSplashStatus?.(m); } catch(e) {} }
+
+async function bootstrap() {
+  _status('applying theme…');
   try {
-    const { initFirestore } = await import('./firestore.js');
-    const { FIREBASE_CONFIG } = await import('./config.js');
-    await initFirestore(FIREBASE_CONFIG);
-    const { fsGet } = await import('./firestore.js');
-    const userData = await fsGet(`users/${session.uid}`);
-    if (!userData) {
-      localStorage.removeItem('beu_session');
-      showLogin();
-      return;
-    }
-    const usuario = buildUsuario(userData, session.uid);
-    AppState.set('currentUser', usuario);
-    AppState.set('currentLang', usuario.idioma);
-    launchShell(usuario);
-  } catch (e) {
-    console.error('Resume error:', e);
-    localStorage.removeItem('beu_session');
-    showLogin();
-  }
+    const t = localStorage.getItem('beu_theme')||'light';
+    if (t === 'light') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', t);
+    AppState.set('theme', t);
+  } catch(e) {}
+  try { const l = localStorage.getItem('beu_lang'); if(l) AppState.set('currentLang',l); } catch(e) {}
+  _status('connecting firebase…');
+  await initFirestore(FIREBASE_CONFIG);
+  _status('checking session…');
+  await initAuth();
 }
-function showLogin() {
-  SPLASH.style.display = 'none';
-  APP.style.display = 'block';
-  import('./auth.js').then(m => m.renderLogin(APP));
-}
-export function launchShell(usuario) {
-  SPLASH.style.display = 'none';
-  APP.style.display = 'block';
-  APP.innerHTML = '';
-  import('./operator.js').then(m => m.initOperator());
-}
-export function buildUsuario(data, uid) {
-  return {
-    uid,
-    nombre: data.nombre || '',
-    email: data.email || '',
-    rol: data.rol || 'operador',
-    idioma: data.idioma || AppState.get('currentLang') || 'es',
-    tema: data.tema || 'light',
-    recinto: data.recinto || '',
-    tabs: data.tabs || ['dash'],
-    permisos: data.permisos || {},
-    evento: data.evento || null,
-    pin: data.pin || null,
-    twoFA: data.twoFA || false,
-  };
-}
-export function logout() {
-  localStorage.removeItem('beu_session');
-  AppState.set('currentUser', null);
-  AppState.set('activeTab', 'dash');
-  APP.innerHTML = '';
-  showLogin();
-}
-// Arrancar
-boot();
+
+window.addEventListener('unhandledrejection', e => console.error('[BEU]', e.reason));
+bootstrap().catch(e => { console.error('[BEU] Bootstrap:', e); try { window.showError?.(e?.message||String(e)); } catch(e) {} });
