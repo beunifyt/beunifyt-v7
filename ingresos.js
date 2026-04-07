@@ -1,348 +1,293 @@
-// BeUnifyT — ingresos.js
-// Módulo Ingresos: Lista, Especial, Modificaciones, Campos
+// ═══════════════════════════════════════════════════════════
+// BeUnifyT v8 — ingresos.js — Módulo Referencia (el original)
+// Subtabs: lista, especial, historial, campos
+// Se duplica para referencia, conductores, agenda
+// ═══════════════════════════════════════════════════════════
 
+import { AppState } from './state.js';
+import { tr, trFree } from './langs.js';
+import { safeHtml, uid, toast, nowLocal, debounce } from './utils.js';
 
+const COLLECTION = 'ingresos';
+let _container = null;
+let _usuario = null;
+let _data = [];
+let _filtered = [];
+let _subtab = 'lista';
+let _unsub = null;
+let _searchTerm = '';
 
+export function render(container, usuario) {
+  _container = container;
+  _usuario = usuario;
+  _data = [];
+  _filtered = [];
+  _subtab = 'lista';
+  paint();
+  loadData();
+  return cleanup;
+}
 
+function cleanup() {
+  if (_unsub) { _unsub(); _unsub = null; }
+}
 
-// ---- hall filter ----
-let cH='';
-function sh(el,h){cH=h;document.querySelectorAll('.hp').forEach(x=>x.classList.remove('on'));el.classList.add('on');rebuildTable();}
-function clrF(){const el=document.querySelector('[data-s]');if(el)el.value='';cH='';document.querySelectorAll('.hp').forEach(x=>x.classList.remove('on'));document.querySelector('.hp').classList.add('on');rebuildTable();}
-function fil(){rebuildTable();}
+function t(k) { return tr('ingresos', k) || trFree('shell', k) || k; }
 
-// ============================================================
-// COLUMN MANAGER
-// ============================================================
-const ALL_COLS=[
-  {id:'pos',       label:'#',          req:true},
-  {id:'matricula', label:'Matrícula',   req:true},
-  {id:'remolque',  label:'Remolque',    req:false},
-  {id:'llamador',  label:'Llamador',    req:false},
-  {id:'referencia',label:'Ref.',        req:false},
-  {id:'conductor', label:'Conductor',   req:false},
-  {id:'empresa',   label:'Empresa',     req:false},
-  {id:'telefono',  label:'Tel.',        req:false},
-  {id:'hall',      label:'Hall',        req:false},
-  {id:'stand',     label:'Stand',       req:false},
-  {id:'estado',    label:'Estado',      req:false},
-  {id:'entrada',   label:'Entrada',     req:false},
-  {id:'acciones',  label:'Acc.',        req:true},
-];
-const DEF_VIS=ALL_COLS.map(c=>c.id);
-let visCols=[...DEF_VIS], colOrd=[...DEF_VIS], sortCol='pos', sortDir='desc', templates={};
+function paint() {
+  const isDark = _usuario.tema === 'dark';
+  const cardBg = isDark ? '#1e293b' : '#fff';
+  const border = isDark ? '#334155' : '#e2e8f0';
+  const p = _usuario.permisos || {};
 
-const FS={
-  save(d){try{localStorage.setItem('be_tpls',JSON.stringify(d));}catch(e){}},
-  load(){try{return JSON.parse(localStorage.getItem('be_tpls')||'{}');}catch(e){return{};}}
-};
+  _container.innerHTML = `
+    <div style="max-width:1100px;margin:0 auto">
+      <!-- SUBTABS -->
+      <div style="display:flex;gap:0;border-bottom:1px solid ${border};margin-bottom:12px">
+        ${['lista','especial','historial','campos'].map(st => {
+          if (st === 'campos' && !p.canCampos) return '';
+          return `<button class="beu-subtab" data-st="${st}" style="padding:8px 16px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:600;border-bottom:2px solid ${_subtab === st ? '#3b82f6' : 'transparent'};color:${_subtab === st ? '#3b82f6' : '#64748b'}">${t(st)}</button>`;
+        }).join('')}
+      </div>
 
-function cellVal(r,cid){
-  const SL={move:'En camino',in:'En recinto',wait:'En espera',park:'Rampa',out:'Salida',none:'Sin asignar'};
-  switch(cid){
-    case 'pos':       return `<td class="p0">${r.p}</td>`;
-    case 'matricula': return `<td><span class="mc" onclick="openDetalle(${r.p})">${r.m}</span>${r.r?`<br><span class="mcs">${r.r}</span>`:''}</td>`;
-    case 'remolque':  return `<td class="dm sm">${r.r||'—'}</td>`;
-    case 'llamador':  return `<td class="dm">${r.ll||'—'}</td>`;
-    case 'referencia':return `<td class="dm sm">${r.ref||'—'}</td>`;
-    case 'conductor': return `<td>${r.n?`<b style="font-size:12px">${r.n}</b>`:''} ${r.e?`<br><span class="dm sm">${r.e}</span>`:''} ${!r.n&&!r.e?'<span class="dm">—</span>':''}</td>`;
-    case 'empresa':   return `<td class="dm sm">${r.e||'—'}</td>`;
-    case 'telefono':  return `<td>${tl(r.tp,r.t)}</td>`;
-    case 'hall':      return `<td><span class="hb">${r.h||'—'}</span></td>`;
-    case 'stand':     return `<td class="dm sm">${r.st||'—'}</td>`;
-    case 'estado':    return `<td><span class="st-${r.es}">${SL[r.es]||r.es}</span></td>`;
-    case 'entrada':   return `<td class="dm sm nw">${r.en}</td>`;
-    case 'acciones':  return `<td><div class="ar">
-      <button class="xa" title="Imprimir" onclick="T('🖨 ${r.m}','')">🖨</button>
-      <button class="xa" title="Troquelado" onclick="T('✂','')">✂</button>
-      <button class="xa" title="Tracking" onclick="T('📡','')">📡</button>
-      <button class="xa" title="Editar" onclick="T('✏️','')">✏️</button>
-      ${r.es!=='out'?`<button class="xa" title="Salida" onclick="T('↩','')">↩</button>`:`<button class="xa" title="Reactivar" onclick="T('↺','')">↺</button>`}
-      <button class="xa xd" title="Eliminar" onclick="T('🗑','')">🗑</button>
-    </div></td>`;
-    default: return '<td>—</td>';
+      <!-- TOOLBAR -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+        <input id="ing-search" type="text" placeholder="${t('search')}" value="${safeHtml(_searchTerm)}" style="flex:1;min-width:180px;padding:8px 12px;border:1px solid ${border};border-radius:8px;font-size:12px;background:${cardBg};color:inherit;outline:none">
+        ${p.canAdd ? `<button id="ing-add" style="padding:8px 14px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">+ ${t('add')}</button>` : ''}
+        ${p.canExport ? `<button id="ing-export" style="padding:8px 14px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">${t('export')}</button>` : ''}
+      </div>
+
+      <!-- TABLA -->
+      <div style="background:${cardBg};border:1px solid ${border};border-radius:10px;overflow:hidden">
+        <div style="overflow-x:auto">
+          <table id="ing-table" style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="background:${isDark ? '#0f172a' : '#f8fafc'}">
+                <th style="padding:8px 12px;text-align:left;font-weight:600;white-space:nowrap">${t('matricula')}</th>
+                <th style="padding:8px 12px;text-align:left;font-weight:600;white-space:nowrap">${t('empresa')}</th>
+                <th style="padding:8px 12px;text-align:left;font-weight:600;white-space:nowrap">${t('hall')}</th>
+                <th style="padding:8px 12px;text-align:left;font-weight:600;white-space:nowrap">${t('horaIngreso')}</th>
+                <th style="padding:8px 12px;text-align:left;font-weight:600;white-space:nowrap">${t('estado')}</th>
+                <th style="padding:8px 12px;text-align:center;font-weight:600">⚙</th>
+              </tr>
+            </thead>
+            <tbody id="ing-tbody"></tbody>
+          </table>
+        </div>
+        <div id="ing-empty" style="display:none;text-align:center;padding:32px;color:#94a3b8;font-size:13px">${trFree('shell', 'noData')}</div>
+      </div>
+    </div>
+  `;
+
+  // Eventos subtabs
+  _container.querySelectorAll('.beu-subtab').forEach(btn => {
+    btn.onclick = () => { _subtab = btn.dataset.st; paint(); loadData(); };
+  });
+
+  // Búsqueda
+  const searchInput = _container.querySelector('#ing-search');
+  if (searchInput) {
+    searchInput.oninput = debounce(() => {
+      _searchTerm = searchInput.value.trim().toLowerCase();
+      applyFilter();
+      renderRows();
+    }, 250);
+  }
+
+  // Añadir
+  const addBtn = _container.querySelector('#ing-add');
+  if (addBtn) addBtn.onclick = () => openModal();
+
+  // Exportar
+  const expBtn = _container.querySelector('#ing-export');
+  if (expBtn) expBtn.onclick = () => exportData();
+
+  renderRows();
+}
+
+async function loadData() {
+  try {
+    const { fsListen } = await import('./firestore.js');
+    if (_unsub) _unsub();
+    _unsub = await fsListen(COLLECTION, (docs) => {
+      const recinto = _usuario.recinto || '';
+      _data = recinto ? docs.filter(d => d.recinto === recinto) : docs;
+      applyFilter();
+      renderRows();
+    });
+  } catch (e) {
+    console.warn('ingresos loadData error:', e);
   }
 }
 
-function sortData(rows){
-  const K={pos:'p',matricula:'m',llamador:'ll',conductor:'n',empresa:'e',hall:'h',estado:'es',entrada:'en'};
-  const k=K[sortCol]; if(!k)return rows;
-  return [...rows].sort((a,b)=>{
-    const r=String(a[k]||'').localeCompare(String(b[k]||''),undefined,{numeric:true});
-    return sortDir==='asc'?r:-r;
-  });
+function applyFilter() {
+  if (!_searchTerm) { _filtered = [..._data]; return; }
+  _filtered = _data.filter(d =>
+    (d.matricula || '').toLowerCase().includes(_searchTerm) ||
+    (d.empresa || '').toLowerCase().includes(_searchTerm) ||
+    (d.nombre || '').toLowerCase().includes(_searchTerm) ||
+    (d.hall || '').toLowerCase().includes(_searchTerm)
+  );
 }
 
-function rebuildTable(){
-  const mc=document.getElementById('mc');
-  if(!mc)return;
-  const q=(document.querySelector('[data-s]')?.value||'').toLowerCase();
-  let rows=D.filter(r=>!q||`${r.p} ${r.m} ${r.n||''} ${r.e||''} ${r.ll||''} ${r.h||''}`.toLowerCase().includes(q));
-  if(cH) rows=rows.filter(r=>r.h===cH);
-  rows=sortData(rows);
-  const cnt=document.getElementById('cnt');
-  if(cnt) cnt.textContent=rows.length+' reg.';
-  if(!rows.length){mc.innerHTML='<div style="text-align:center;padding:48px;opacity:.4"><div style="font-size:36px">🚦</div><div style="font-weight:600;margin-top:6px">Sin resultados</div></div>';return;}
-  const cols=colOrd.filter(c=>visCols.includes(c));
-  const colDefs=cols.map(id=>ALL_COLS.find(c=>c.id===id)).filter(Boolean);
-  const SORT_IDS=['pos','matricula','llamador','conductor','empresa','hall','estado','entrada'];
-  const thead=colDefs.map(c=>{
-    const s=SORT_IDS.includes(c.id);
-    const cls=c.id===sortCol?(sortDir==='asc'?'sort-asc':'sort-desc'):'';
-    return `<th class="${cls}"${s?` onclick="colSort('${c.id}')"`:''} oncontextmenu="colCtx(event,'${c.id}')">${c.label}</th>`;
-  }).join('');
-  mc.innerHTML=`<table class="dtbl"><thead><tr>${thead}</tr></thead><tbody>${rows.map(r=>`<tr>${cols.map(cid=>cellVal(r,cid)).join('')}</tr>`).join('')}</tbody></table>`;
+function renderRows() {
+  const tbody = _container.querySelector('#ing-tbody');
+  const empty = _container.querySelector('#ing-empty');
+  if (!tbody) return;
+
+  if (_filtered.length === 0) {
+    tbody.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  const isDark = _usuario.tema === 'dark';
+  const p = _usuario.permisos || {};
+
+  tbody.innerHTML = _filtered.map(d => `
+    <tr style="border-top:1px solid ${isDark ? '#334155' : '#f1f5f9'}">
+      <td style="padding:8px 12px;font-weight:600">${safeHtml(d.matricula || '—')}</td>
+      <td style="padding:8px 12px">${safeHtml(d.empresa || '—')}</td>
+      <td style="padding:8px 12px">${safeHtml(d.hall || '—')}</td>
+      <td style="padding:8px 12px">${safeHtml(d.fecha || d.horaIngreso || '—')}</td>
+      <td style="padding:8px 12px"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;${statusStyle(d.estado)}">${safeHtml(d.estado || '—')}</span></td>
+      <td style="padding:8px 12px;text-align:center">
+        ${p.canEdit ? `<button onclick="window._beuEditIng('${d.id}')" style="background:none;border:none;cursor:pointer;font-size:14px" title="${t('edit')}">✏️</button>` : ''}
+        ${p.canDel ? `<button onclick="window._beuDelIng('${d.id}')" style="background:none;border:none;cursor:pointer;font-size:14px" title="${t('delete')}">🗑</button>` : ''}
+      </td>
+    </tr>
+  `).join('');
 }
 
-function colSort(col){if(sortCol===col)sortDir=sortDir==='asc'?'desc':'asc';else{sortCol=col;sortDir='asc';}rebuildTable();}
-
-// ---- Context menu ----
-let _ctxCol=null, ctxEl;
-function buildCtxMenu(){
-  ctxEl=document.createElement('div');
-  ctxEl.id='ctxMenu';
-  ctxEl.style.cssText='position:fixed;z-index:9999;display:none;min-width:170px;border-radius:10px;padding:4px;box-shadow:0 6px 24px rgba(0,0,0,.15)';
-  document.body.appendChild(ctxEl);
-  document.addEventListener('click',()=>ctxEl.style.display='none');
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')ctxEl.style.display='none';});
-}
-function colCtx(e,id){
-  e.preventDefault(); _ctxCol=id;
-  const vis=visCols.includes(id);
-  ctxEl.innerHTML=`
-    <div class="ctx-item" onclick="ctxToggle()">${vis?'👁 Ocultar':'👁 Mostrar'} columna</div>
-    <div class="ctx-sep"></div>
-    <div class="ctx-item" onclick="colSort('${id}');ctxEl.style.display='none'">▲ A → Z</div>
-    <div class="ctx-item" onclick="sortCol='${id}';sortDir='desc';rebuildTable();ctxEl.style.display='none'">▼ Z → A</div>
-    <div class="ctx-sep"></div>
-    <div class="ctx-item" onclick="openColPanel();ctxEl.style.display='none'">⚙ Gestionar columnas</div>`;
-  ctxEl.style.display='block';
-  const r=ctxEl.getBoundingClientRect();
-  let x=e.clientX,y=e.clientY;
-  if(x+r.width>window.innerWidth)x=window.innerWidth-r.width-8;
-  if(y+r.height>window.innerHeight)y=window.innerHeight-r.height-8;
-  ctxEl.style.left=x+'px';ctxEl.style.top=y+'px';
-}
-function ctxToggle(){if(_ctxCol)toggleCol(_ctxCol);ctxEl.style.display='none';}
-
-// ---- Column panel ----
-let panelEl;
-function buildColPanel(){panelEl=document.createElement('div');panelEl.className='col-panel';document.body.appendChild(panelEl);}
-function openColPanel(){renderPanel();panelEl.classList.add('open');}
-function closeColPanel(){panelEl.classList.remove('open');}
-function toggleCol(id){const c=ALL_COLS.find(x=>x.id===id);if(c&&c.req)return;if(visCols.includes(id))visCols=visCols.filter(x=>x!==id);else visCols.push(id);renderPanel();rebuildTable();}
-
-function renderPanel(){
-  const tplHTML=Object.keys(templates).length
-    ?Object.keys(templates).map(n=>`<div class="tpl-item${templates[n]._active?' active':''}" onclick="applyTpl('${n.replace(/'/g,"\\'")}')"><span class="tpl-item-name">📋 ${n}</span><span class="tpl-item-del" onclick="delTpl(event,'${n.replace(/'/g,"\\'")}')">✕</span></div>`).join('')
-    :'<div style="font-size:11px;padding:6px 10px;opacity:.4">Sin plantillas guardadas</div>';
-  panelEl.innerHTML=`
-    <div class="col-panel-head"><div class="col-panel-title">⚙ Columnas</div><button class="col-panel-close" onclick="closeColPanel()">✕</button></div>
-    <div class="col-panel-body">
-      <div class="col-panel-sec">Visibilidad</div>
-      ${ALL_COLS.map(c=>{const on=visCols.includes(c.id);return`<div class="col-item${on?' col-on':''}" onclick="${c.req?'':` toggleCol('${c.id}')`}" style="${c.req?'opacity:.55;cursor:default':''}">
-        <div class="col-toggle${on?' on':''}"><div class="col-toggle-knob"></div></div>
-        <span class="col-item-lbl">${c.label}${c.req?' <small style="opacity:.4">(fija)</small>':''}</span>
-      </div>`;}).join('')}
-      <button class="col-reset-btn" onclick="visCols=[...DEF_VIS];colOrd=[...DEF_VIS];renderPanel();rebuildTable()">↺ Restaurar predeterminadas</button>
-    </div>
-    <div class="col-panel-foot">
-      <div class="col-panel-sec" style="margin-top:0;padding-top:0">Plantillas</div>
-      <div class="tpl-row"><input class="tpl-input" id="tplIn" placeholder="Nombre plantilla..."><button class="tpl-save" onclick="saveTpl()">Guardar</button></div>
-      <div class="tpl-list">${tplHTML}</div>
-    </div>`;
+function statusStyle(estado) {
+  switch (estado) {
+    case 'EN_RECINTO': return 'background:#dcfce7;color:#166534';
+    case 'SALIDA':     return 'background:#e2e8f0;color:#475569';
+    case 'FUERA_OP':   return 'background:#fef3c7;color:#92400e';
+    default:           return 'background:#f1f5f9;color:#64748b';
+  }
 }
 
-function saveTpl(){const el=document.getElementById('tplIn');const n=el?.value.trim();if(!n){T('Ingresá un nombre','');return;}Object.keys(templates).forEach(k=>templates[k]._active=false);templates[n]={visible:[...visCols],order:[...colOrd],_active:true};FS.save(templates);if(el)el.value='';renderPanel();T('Plantilla "'+n+'" guardada','');}
-function applyTpl(n){const t=templates[n];if(!t)return;visCols=[...(t.visible||DEF_VIS)];colOrd=[...(t.order||DEF_VIS)];Object.keys(templates).forEach(k=>templates[k]._active=false);templates[n]._active=true;FS.save(templates);renderPanel();rebuildTable();T('Plantilla "'+n+'" activada','');}
-function delTpl(e,n){e.stopPropagation();delete templates[n];FS.save(templates);renderPanel();T('Plantilla eliminada','');}
+// ─── MODAL CRUD ─────────────────────────────────────────
+function openModal(editId = null) {
+  const isDark = _usuario.tema === 'dark';
+  const existing = document.getElementById('beu-ing-modal');
+  if (existing) existing.remove();
 
-// ---- Detalle registro ----
-const HISTORIAL=[
-  {p:273,m:"8611MTL",n:"Juan García",e:"Trans. Norte",tp:"+34",t:"612345678",ll:"ACME",h:"5",ref:"REF-001"},
-  {p:272,m:"8788MTL",n:"Carlos Ruiz",e:"Trans. Iberica",tp:"+34",t:"68101",ll:"--",h:"5",ref:"REF-002"},
-  {p:271,m:"GX936KJ",n:"Ana Martinez",e:"Logistica Sur",tp:"+34",t:"9687",ll:"--",h:"3A",ref:"REF-003"},
-];
-function openDetalle(pid){
-  const r=D.find(x=>x.p===pid)||D[0];
-  const SL={move:'En camino',in:'En recinto',wait:'En espera',park:'Rampa',out:'Salida',none:'Sin asignar'};
-  document.getElementById('detBody').innerHTML=`
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-      <span style="font-size:24px;font-weight:800;font-family:monospace;letter-spacing:1px">${r.m}</span>
-      <span class="st-${r.es}">${SL[r.es]||r.es}</span>
-      ${r.r?`<span class="mcs">${r.r}</span>`:''}
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:16px">
-      <div><div style="font-size:10px;opacity:.45;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Conductor</div><b>${r.n||'—'}</b></div>
-      <div><div style="font-size:10px;opacity:.45;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Empresa</div>${r.e||'—'}</div>
-      <div><div style="font-size:10px;opacity:.45;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Teléfono</div>${tl(r.tp,r.t)}</div>
-      <div><div style="font-size:10px;opacity:.45;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Llamador</div>${r.ll||'—'}</div>
-      <div><div style="font-size:10px;opacity:.45;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Hall</div><span class="hb">${r.h||'—'}</span></div>
-      <div><div style="font-size:10px;opacity:.45;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Entrada</div>${r.en}</div>
-    </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="xa" onclick="T('🖨 ${r.m}','')">🖨 Imprimir</button>
-      <button class="xa" onclick="T('✂','')">✂ Troquelado</button>
-      <button class="xa" onclick="T('📡','')">📡 Tracking</button>
-      <button class="xa" onclick="T('✏️','');document.getElementById('detOv').classList.remove('open')">✏️ Editar</button>
-      ${r.es!=='out'?`<button class="xa" onclick="T('↩ Salida','');document.getElementById('detOv').classList.remove('open')">↩ Salida</button>`
-        :`<button class="xa" onclick="T('↺ Reactivado','')">↺ Reactivar</button>`}
-      <button class="xa xd" onclick="T('🗑','');document.getElementById('detOv').classList.remove('open')">🗑 Eliminar</button>
-    </div>`;
-  document.getElementById('detOv').classList.add('open');
-}
+  const record = editId ? _data.find(d => d.id === editId) : {};
 
-// ---- Autocomplete ----
-function initAutocomplete(){
-  const matIn=document.querySelector('.new-mat');
-  const sugBox=document.getElementById('matSug');
-  if(!matIn||!sugBox)return;
-  matIn.addEventListener('input',()=>{
-    const q=matIn.value.toUpperCase();
-    if(!q||q.length<2){sugBox.style.display='none';return;}
-    const matches=[...D,...HISTORIAL].filter((h,i,a)=>a.findIndex(x=>x.m===h.m)===i&&h.m.includes(q));
-    if(!matches.length){sugBox.style.display='none';return;}
-    sugBox.innerHTML=matches.slice(0,6).map(h=>`<div class="sug-item" onclick="fillFromHistory('${h.m}')">
-      <span style="font-family:monospace;font-weight:700">${h.m}</span>
-      <span style="opacity:.5;font-size:11px;margin-left:6px">${h.n||''} ${h.e?'· '+h.e:''}</span>
-    </div>`).join('');
-    sugBox.style.display='block';
-  });
-  matIn.addEventListener('blur',()=>setTimeout(()=>sugBox.style.display='none',200));
-  // Scanner btn
-  const wrap=matIn.parentElement;
-  const scanBtn=document.createElement('button');
-  scanBtn.type='button';
-  scanBtn.innerHTML='📷';
-  scanBtn.style.cssText='position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:16px;cursor:pointer;opacity:.4;transition:opacity .15s;padding:0';
-  scanBtn.addEventListener('mouseenter',()=>scanBtn.style.opacity='1');
-  scanBtn.addEventListener('mouseleave',()=>scanBtn.style.opacity='.4');
-  scanBtn.addEventListener('click',()=>{
-    T('📷 Escaneando...','');
-    setTimeout(()=>{
-      const r=['8611MTL','WW486TL','GX936KJ','8443DSR'][Math.floor(Math.random()*4)];
-      matIn.value=r;matIn.dispatchEvent(new Event('input'));T('✅ Escaneada: '+r,'');
-    },1500);
-  });
-  wrap.appendChild(scanBtn);
-  matIn.style.paddingRight='34px';
-}
+  const fields = [
+    { key:'matricula', type:'text' },
+    { key:'remolque', type:'text' },
+    { key:'empresa', type:'text' },
+    { key:'montador', type:'text' },
+    { key:'expositor', type:'text' },
+    { key:'hall', type:'text' },
+    { key:'stand', type:'text' },
+    { key:'puerta', type:'text' },
+    { key:'nombre', type:'text' },
+    { key:'apellido', type:'text' },
+    { key:'pasaporte', type:'text' },
+    { key:'telefono', type:'tel' },
+    { key:'email', type:'email' },
+    { key:'referencia', type:'text' },
+    { key:'obs', type:'textarea' },
+  ];
 
-function fillFromHistory(mat){
-  const h=[...D,...HISTORIAL].find(x=>x.m===mat);if(!h)return;
-  ['.new-n','.new-e','.new-ll','.new-h','.new-ref'].forEach(s=>{
-    const key={'.new-n':'n','.new-e':'e','.new-ll':'ll','.new-h':'h','.new-ref':'ref'}[s];
-    const el=document.querySelector(s);if(el&&h[key])el.value=h[key];
-  });
-  document.querySelector('.new-mat').value=mat;
-  document.getElementById('matSug').style.display='none';
-  T('Datos precargados ✓','');
-}
+  const modal = document.createElement('div');
+  modal.id = 'beu-ing-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8000;display:flex;align-items:center;justify-content:center;padding:16px';
 
-// ============================================================
-// CAMPOS TAB
-// ============================================================
-const CAMPOS_DEFS={
-  vehiculo:{icon:'🚛',label:'Vehículo',fields:[
-    {id:'matricula',  label:'Matrícula',      req:true,  desc:'Placa del vehículo'},
-    {id:'remolque',   label:'Remolque',       req:false, desc:'Matrícula del remolque'},
-    {id:'posicion',   label:'Posición',       req:false, desc:'Posición en recinto'},
-    {id:'llamador',   label:'Llamador',       req:false, desc:'Responsable llamada'},
-    {id:'logistica',  label:'Logística',      req:false, desc:'Empresa logística'},
-    {id:'tipo_veh',   label:'Tipo vehículo',  req:false, desc:'Camión, furgón...'},
-    {id:'pais',       label:'País',           req:false, desc:'País de matrícula'},
-  ]},
-  conductor:{icon:'👤',label:'Conductor',fields:[
-    {id:'nombre',     label:'Nombre',         req:true,  desc:'Nombre del conductor'},
-    {id:'apellido',   label:'Apellido',       req:false, desc:'Apellido'},
-    {id:'empresa',    label:'Empresa',        req:false, desc:'Empresa transportista'},
-    {id:'telefono',   label:'Teléfono',       req:false, desc:'Tel. conductor'},
-    {id:'dni',        label:'DNI/Pasaporte',  req:false, desc:'Documento identidad'},
-    {id:'supervisor', label:'Supervisor',     req:false, desc:'Nombre supervisor evento'},
-    {id:'tel_sup',    label:'Tel. supervisor',req:false, desc:'Teléfono supervisor'},
-  ]},
-  evento:{icon:'📅',label:'Evento',fields:[
-    {id:'montador',   label:'Montador',       req:false, desc:'Empresa montadora'},
-    {id:'expositor',  label:'Expositor',      req:false, desc:'Nombre del expositor'},
-    {id:'hall',       label:'Hall',           req:true,  desc:'Hall de destino'},
-    {id:'stand',      label:'Stand',          req:false, desc:'Stand de entrega'},
-    {id:'referencia', label:'Ref/Booking',    req:false, desc:'Número de reserva'},
-    {id:'puerta',     label:'Puerta Hall',    req:false, desc:'Puerta de acceso'},
-    {id:'acceso',     label:'Tipo acceso',    req:false, desc:'Principal, lateral...'},
-    {id:'fecha',      label:'Fecha',          req:true,  desc:'Fecha de ingreso'},
-    {id:'hora',       label:'Hora',           req:false, desc:'Hora de ingreso'},
-    {id:'notas',      label:'Notas',          req:false, desc:'Observaciones'},
-  ]},
-};
-
-function loadCamposState(){try{return JSON.parse(localStorage.getItem('be_campos')||'null');}catch(e){return null;}}
-function defaultCamposState(){const s={};Object.values(CAMPOS_DEFS).forEach(sec=>sec.fields.forEach(f=>{s[f.id]={visible:true,required:f.req,label:f.label};}));return s;}
-let camposState=loadCamposState()||defaultCamposState();
-function saveCamposState(){localStorage.setItem('be_campos',JSON.stringify(camposState));}
-
-function renderCamposTab(){
-  const mc=document.getElementById('mc');
-  if(!mc)return;
-  mc.innerHTML=`<div style="padding:18px;max-width:700px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-      <div>
-        <div style="font-size:15px;font-weight:700">Configuración de campos</div>
-        <div style="font-size:12px;opacity:.5;margin-top:2px">Activá, ocultá o renombrá los campos del formulario de ingreso</div>
+  modal.innerHTML = `
+    <div style="background:${isDark ? '#1e293b' : '#fff'};border-radius:14px;padding:20px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,.25);color:inherit">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:700">${editId ? t('edit') : t('add')} ${t('title')}</div>
+        <button id="modal-close" style="background:none;border:none;font-size:18px;cursor:pointer;color:inherit">✕</button>
       </div>
-      <button class="bn" onclick="resetCampos()">↺ Restaurar</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${fields.map(f => `
+          <div${f.key === 'obs' ? ' style="grid-column:span 2"' : ''}>
+            <label style="font-size:10px;font-weight:600;color:#64748b;display:block;margin-bottom:2px">${t(f.key)}</label>
+            ${f.type === 'textarea'
+              ? `<textarea data-field="${f.key}" style="width:100%;padding:8px;border:1px solid ${isDark ? '#475569' : '#e2e8f0'};border-radius:6px;font-size:12px;background:${isDark ? '#0f172a' : '#f8fafc'};color:inherit;resize:vertical;min-height:60px">${safeHtml(record[f.key] || '')}</textarea>`
+              : `<input data-field="${f.key}" type="${f.type}" value="${safeHtml(record[f.key] || '')}" style="width:100%;padding:8px;border:1px solid ${isDark ? '#475569' : '#e2e8f0'};border-radius:6px;font-size:12px;background:${isDark ? '#0f172a' : '#f8fafc'};color:inherit">`
+            }
+          </div>
+        `).join('')}
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+        <button id="modal-cancel" style="padding:8px 16px;border:1px solid ${isDark ? '#475569' : '#e2e8f0'};border-radius:8px;background:none;cursor:pointer;font-size:12px;color:inherit">${t('cancel')}</button>
+        <button id="modal-save" style="padding:8px 16px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">${t('save')}</button>
+      </div>
     </div>
-    ${Object.entries(CAMPOS_DEFS).map(([sec,def])=>`
-      <div class="campos-sec">
-        <div class="campos-sec-head"><span>${def.icon}</span><span>${def.label}</span></div>
-        ${def.fields.map(f=>{
-          const st=camposState[f.id]||{visible:true,required:f.req,label:f.label};
-          return `<div class="campos-row" id="cr-${f.id}">
-            <div class="col-toggle${st.visible?' on':''}" onclick="toggleCampo('${f.id}')"><div class="col-toggle-knob"></div></div>
-            <div style="flex:1;min-width:0">
-              <div style="display:flex;align-items:center;gap:5px">
-                <span id="clbl-${f.id}" style="font-size:12px;font-weight:600">${st.label}</span>
-                ${f.req?'<span style="font-size:9px;opacity:.35">(requerido)</span>':''}
-                <span style="font-size:11px;opacity:.3;cursor:pointer" onclick="editCampoLabel('${f.id}')" title="Renombrar">✏️</span>
-              </div>
-              <div style="font-size:11px;opacity:.45">${f.desc}</div>
-            </div>
-            <label style="display:flex;align-items:center;gap:4px;font-size:11px;opacity:.6;cursor:pointer;white-space:nowrap">
-              <input type="checkbox" ${st.required?'checked':''} ${f.req?'disabled':''}
-                onchange="camposState['${f.id}'].required=this.checked;saveCamposState()"
-                style="accent-color:var(--acc,#2c5ee8)"> Obligatorio
-            </label>
-          </div>`;
-        }).join('')}
-      </div>`).join('')}
-  </div>`;
+  `;
+
+  modal.querySelector('#modal-close').onclick = () => modal.remove();
+  modal.querySelector('#modal-cancel').onclick = () => modal.remove();
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  modal.querySelector('#modal-save').onclick = async () => {
+    const formData = { recinto: _usuario.recinto || '', modificado: nowLocal(), modificadoPor: _usuario.uid };
+    modal.querySelectorAll('[data-field]').forEach(el => {
+      formData[el.dataset.field] = el.value || '';
+    });
+
+    try {
+      if (editId) {
+        const { fsUpdate } = await import('./firestore.js');
+        await fsUpdate(`${COLLECTION}/${editId}`, formData);
+      } else {
+        formData.fecha = nowLocal();
+        formData.estado = 'EN_RECINTO';
+        formData.creadoPor = _usuario.uid;
+        const { fsAdd } = await import('./firestore.js');
+        await fsAdd(COLLECTION, formData);
+      }
+      toast(t('save') + ' ✓', '#10b981');
+      modal.remove();
+    } catch (e) {
+      toast(trFree('shell', 'error'), '#ef4444');
+      console.error('Save error:', e);
+    }
+  };
+
+  document.body.appendChild(modal);
 }
 
-function toggleCampo(id){
-  if(!camposState[id])camposState[id]={visible:true,required:false,label:id};
-  camposState[id].visible=!camposState[id].visible;
-  saveCamposState();renderCamposTab();
+async function deleteRecord(id) {
+  if (!confirm(t('confirm') + '?')) return;
+  try {
+    const { fsDel } = await import('./firestore.js');
+    await fsDel(`${COLLECTION}/${id}`);
+    toast(t('delete') + ' ✓', '#f59e0b');
+  } catch (e) {
+    toast(trFree('shell', 'error'), '#ef4444');
+  }
 }
-function editCampoLabel(id){
-  const el=document.getElementById('clbl-'+id);
-  if(!el)return;
-  const cur=camposState[id]?.label||id;
-  const inp=document.createElement('input');
-  inp.value=cur;
-  inp.style.cssText='font-size:12px;font-weight:600;border:none;border-bottom:2px solid var(--acc,#2c5ee8);background:transparent;color:inherit;outline:none;width:120px;padding:1px 2px';
-  inp.addEventListener('blur',()=>{
-    if(!camposState[id])camposState[id]={visible:true,required:false,label:id};
-    camposState[id].label=inp.value.trim()||cur;
-    saveCamposState();renderCamposTab();
-  });
-  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){inp.value=cur;inp.blur();}});
-  el.replaceWith(inp);inp.focus();inp.select();
+
+async function exportData() {
+  try {
+    // Carga dinámica de xlsx solo al exportar
+    toast(trFree('shell', 'loading'), '#3b82f6');
+    const XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs');
+    const ws = XLSX.utils.json_to_sheet(_filtered.map(d => ({
+      [t('matricula')]: d.matricula,
+      [t('empresa')]: d.empresa,
+      [t('hall')]: d.hall,
+      [t('horaIngreso')]: d.fecha,
+      [t('estado')]: d.estado,
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, t('title'));
+    XLSX.writeFile(wb, `${t('title')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    toast(t('export') + ' ✓', '#10b981');
+  } catch (e) {
+    console.error('Export error:', e);
+    toast(trFree('shell', 'error'), '#ef4444');
+  }
 }
-function resetCampos(){camposState=defaultCamposState();saveCamposState();renderCamposTab();T('Campos restaurados','');}
 
-// ============================================================
-// SIDEBAR — fijo, 4 posiciones
-// ============================================================
-
-
-
-window.renderIngresos = typeof renderIngresos !== 'undefined' ? renderIngresos : () => rebuildTable();
+// Exponer funciones al window para onclick inline
+window._beuEditIng = (id) => openModal(id);
+window._beuDelIng = (id) => deleteRecord(id);
