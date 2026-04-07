@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════
-// BeUnifyT v8 — ingresos2.js — Módulo INGRESOS
-// Colección: ingresos2 | Tipos: A (furgoneta), B (camión 4 ejes)
-// Cross-read: conductores (AutoFill). NO lee agenda.
+// BeUnifyT v8 — flota.js — Módulo Embalaje
+// Colección: movimientos | Empty (embalaje) y Fullgood (mercadería valor)
+// Cross-read: conductores
 // ═══════════════════════════════════════════════════════════
 import { AppState } from './state.js';
 import { tr, trFree } from './langs.js';
@@ -10,7 +10,7 @@ import { initFields, getVisibleFormFields, initCols, getVisCols, renderCamposHTM
 import { scannerButtonHTML, scannerConfigHTML } from './scanner.js';
 
 const MOD='flota',COLL='movimientos',TITLE='Embalaje',ICON='📦',REQ_FIELD='codigo';
-const HAS_ESPECIAL=false; // Ingresos SÍ tiene subtab Especial
+const HAS_ESPECIAL=false;
 const FIELD_DEFS={
   paquete:{icon:'📦',label:'Paquete',fields:[
     {id:'codigo',label:'Código',req:1,desc:'Código paquete',type:'text'},
@@ -35,15 +35,7 @@ const FIELD_DEFS={
     {id:'obs',label:'Notas',desc:'Observaciones',type:'text'},
   ]},
 };
-const ALL_COLS=[{id:'pos',label:'#',req:1},{id:'codigo',label:'Código',req:1},{id:'descripcion',label:'Descripción'},{id:'tipo',label:'Tipo'},{id:'peso',label:'Peso'},{id:'hall',label:'Hall'},{id:'stand',label:'Stand'},{id:'expositor',label:'Expositor'},{id:'empresa',label:'Empresa'},{id:'estado',label:'Estado'},{id:'entrada',label:'Fecha'},{id:'acciones',label:'Acc.',req:1}];
-  {id:'pos',label:'#',req:1},{id:'matricula',label:'Matrícula',req:1},
-  {id:'remolque',label:'Remolque'},{id:'tipoVehiculo',label:'Tipo'},
-  {id:'llamador',label:'Llamador'},{id:'conductor',label:'Conductor'},
-  {id:'empresa',label:'Empresa'},{id:'telefono',label:'Tel.'},
-  {id:'hall',label:'Hall'},{id:'stand',label:'Stand'},
-  {id:'estado',label:'Estado'},{id:'entrada',label:'Entrada'},
-  {id:'acciones',label:'Acc.',req:1},
-];
+const ALL_COLS=[{id:'pos',label:'#',req:1},{id:'codigo',label:'Código',req:1},{id:'descripcion',label:'Descripción'},{id:'tipo',label:'Tipo'},{id:'peso',label:'Peso'},{id:'hall',label:'Hall'},{id:'stand',label:'Stand'},{id:'empresa',label:'Empresa'},{id:'estado',label:'Estado'},{id:'entrada',label:'Fecha'},{id:'acciones',label:'Acc.',req:1}];
 const ST={RECIBIDO:'Recibido',ENTREGADO:'Entregado',PENDIENTE:'Pendiente',DEVUELTO:'Devuelto'};
 const ST_BG={RECIBIDO:'#dcfce7;color:#15803d',ENTREGADO:'#dbeafe;color:#1d4ed8',PENDIENTE:'#fef9c3;color:#a16207',DEVUELTO:'#f1f5f9;color:#64748b'};
 function stP(s){return`<span style="display:inline-flex;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;background:${ST_BG[s]||'#f8fafc;color:#94a3b8'}">${ST[s]||s||'—'}</span>`;}
@@ -52,7 +44,7 @@ function _tel(tp,t){if(!t)return'<span style="opacity:.3">–</span>';const f=(t
 let _c,_u,_data=[],_filtered=[],_unsub,_especiales=[],_historial=[];
 let _sub='lista',_q='',_hallF='',_activos=false,_dateFrom='',_dateTo='',_statusF='';
 let _sortCol='pos',_sortDir='desc',_autoFill=true,_posAuto=true;
-const PFX='_fl'; // prefix para window bindings único
+const PFX='_fl';
 function dk(){return _u?.tema==='dark';}
 const C=()=>{const d=dk();return{bg:d?'#0f172a':'#f4f5f7',card:d?'#1e293b':'#fff',bg2:d?'#0f172a':'#f8f9fc',border:d?'#334155':'#e4e7ec',text:d?'#e2e8f0':'#1a2235',t3:d?'#94a3b8':'#6b7a90',blue:'#2c5ee8',bll:d?'rgba(44,94,232,.1)':'#eef2ff',green:'#0d9f6e',red:'#dc2626',amber:'#d97706',purple:'#7c3aed'};};
 
@@ -80,7 +72,7 @@ function paint(){
     <div style="font-size:22px;font-weight:700;color:${c.text}">${TITLE}</div>
     <span style="font-size:11px;color:${c.t3}">${new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'short',year:'numeric'})}</span>
     <span style="flex:1"></span>
-    ${p.canAdd?`<button id="_add" style="padding:8px 18px;background:${c.green};color:#fff;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">+ Nuevo embalaje</button>`:''}
+    ${p.canAdd?`<button id="_add" style="padding:8px 18px;background:${c.green};color:#fff;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">+ Añadir ingreso</button>`:''}
   </div>
   <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;background:${c.card};border:1px solid ${c.border};border-radius:12px">
     <div style="display:flex;align-items:center;gap:3px;padding:8px 12px;border-bottom:1px solid ${c.border};overflow-x:auto;flex-shrink:0;flex-wrap:wrap;scrollbar-width:none">

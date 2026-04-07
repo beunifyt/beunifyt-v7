@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════
-// BeUnifyT v8 — ingresos2.js — Módulo INGRESOS
-// Colección: ingresos2 | Tipos: A (furgoneta), B (camión 4 ejes)
-// Cross-read: conductores (AutoFill). NO lee agenda.
+// BeUnifyT v8 — ingresos.js — Módulo Referencia
+// Colección: ingresos | Tipos: T (trailer forklift), TH (trailer manual)
+// Cross-read: conductores (AutoFill) + agenda (buscar por nº referencia)
 // ═══════════════════════════════════════════════════════════
 import { AppState } from './state.js';
 import { tr, trFree } from './langs.js';
@@ -10,15 +10,15 @@ import { initFields, getVisibleFormFields, initCols, getVisCols, renderCamposHTM
 import { scannerButtonHTML, scannerConfigHTML } from './scanner.js';
 
 const MOD='ingresos',COLL='ingresos',TITLE='Referencia',ICON='🔖',REQ_FIELD='matricula';
-const HAS_ESPECIAL=true; // Ingresos SÍ tiene subtab Especial
+const HAS_ESPECIAL=true;
 const FIELD_DEFS={
   vehiculo:{icon:'🚛',label:'Vehículo',fields:[
     {id:'matricula',label:'Matrícula',req:1,desc:'Placa del vehículo',type:'text'},
     {id:'remolque',label:'Remolque',desc:'Matrícula del remolque',type:'text'},
-    {id:'tipoVehiculo',label:'Tipo vehículo',desc:'A=Furgoneta, B=Camión',type:'select',options:['','T - Trailer forklift','TH - Trailer manual','A - Furgoneta','B - Camión 4 ejes']},
+    {id:'tipoVehiculo',label:'Tipo vehículo',desc:'T=Trailer, TH=Manual',type:'select',options:['','T - Trailer forklift','TH - Trailer manual','A - Furgoneta','B - Camión 4 ejes']},
+    {id:'tipoCarga',label:'Tipo carga',desc:'Forklift/Manual',type:'select',options:['','Forklift','Manual','Mixto']},
     {id:'posicion',label:'Posición',desc:'Posición en recinto',type:'text'},
     {id:'llamador',label:'Llamador',desc:'Responsable llamada',type:'text'},
-    {id:'logistica',label:'Logística',desc:'Empresa logística',type:'text'},
   ]},
   conductor:{icon:'👤',label:'Conductor',fields:[
     {id:'nombre',label:'Nombre',desc:'Nombre del conductor',type:'text'},
@@ -29,23 +29,18 @@ const FIELD_DEFS={
     {id:'dni',label:'DNI/Pasaporte',desc:'Documento identidad',type:'text'},
   ]},
   destino:{icon:'📍',label:'Destino',fields:[
-    {id:'referencia',label:'Ref/Booking',desc:'Número de reserva',type:'text'},{id:'tipoCarga',label:'Tipo carga',desc:'Forklift/Manual',type:'select',options:['','Forklift','Manual','Mixto']},{id:'hall',label:'Hall',req:1,desc:'Hall de destino',type:'text'},
+    {id:'referencia',label:'Ref/Booking',desc:'Número de reserva',type:'text'},
+    {id:'hall',label:'Hall',req:1,desc:'Hall de destino',type:'text'},
     {id:'stand',label:'Stand',desc:'Stand de entrega',type:'text'},
+    {id:'montador',label:'Montador',desc:'Empresa montadora',type:'text'},
     {id:'expositor',label:'Expositor',desc:'Nombre del expositor',type:'text'},
+    {id:'puerta',label:'Puerta Hall',desc:'Puerta de acceso',type:'text'},
     {id:'fechaIng',label:'Fecha',req:1,desc:'Fecha de ingreso',type:'date'},
     {id:'horaIng',label:'Hora',desc:'Hora de ingreso',type:'time'},
     {id:'obs',label:'Notas',desc:'Observaciones',type:'text'},
   ]},
 };
-const ALL_COLS=[
-  {id:'pos',label:'#',req:1},{id:'matricula',label:'Matrícula',req:1},
-  {id:'remolque',label:'Remolque'},{id:'tipoVehiculo',label:'Tipo'},
-  {id:'referencia',label:'Ref.'},{id:'tipoCarga',label:'Carga'},{id:'llamador',label:'Llamador'},{id:'conductor',label:'Conductor'},
-  {id:'empresa',label:'Empresa'},{id:'telefono',label:'Tel.'},
-  {id:'hall',label:'Hall'},{id:'stand',label:'Stand'},
-  {id:'estado',label:'Estado'},{id:'entrada',label:'Entrada'},
-  {id:'acciones',label:'Acc.',req:1},
-];
+const ALL_COLS=[{id:'pos',label:'#',req:1},{id:'matricula',label:'Matrícula',req:1},{id:'remolque',label:'Remolque'},{id:'tipoCarga',label:'Carga'},{id:'referencia',label:'Ref.'},{id:'conductor',label:'Conductor'},{id:'empresa',label:'Empresa'},{id:'telefono',label:'Tel.'},{id:'hall',label:'Hall'},{id:'stand',label:'Stand'},{id:'estado',label:'Estado'},{id:'entrada',label:'Entrada'},{id:'acciones',label:'Acc.',req:1}];
 const ST={EN_RECINTO:'En recinto',EN_CAMINO:'En camino',ESPERA:'En espera',RAMPA:'Rampa',SALIDA:'Salida'};
 const ST_BG={EN_RECINTO:'#dcfce7;color:#15803d',EN_CAMINO:'#dbeafe;color:#1d4ed8',ESPERA:'#fef9c3;color:#a16207',RAMPA:'#ede9fe;color:#6d28d9',SALIDA:'#f1f5f9;color:#64748b'};
 function stP(s){return`<span style="display:inline-flex;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;background:${ST_BG[s]||'#f8fafc;color:#94a3b8'}">${ST[s]||s||'—'}</span>`;}
@@ -54,7 +49,7 @@ function _tel(tp,t){if(!t)return'<span style="opacity:.3">–</span>';const f=(t
 let _c,_u,_data=[],_filtered=[],_unsub,_especiales=[],_historial=[];
 let _sub='lista',_q='',_hallF='',_activos=false,_dateFrom='',_dateTo='',_statusF='';
 let _sortCol='pos',_sortDir='desc',_autoFill=true,_posAuto=true;
-const PFX='_r1'; // prefix para window bindings único
+const PFX='_r1';
 function dk(){return _u?.tema==='dark';}
 const C=()=>{const d=dk();return{bg:d?'#0f172a':'#f4f5f7',card:d?'#1e293b':'#fff',bg2:d?'#0f172a':'#f8f9fc',border:d?'#334155':'#e4e7ec',text:d?'#e2e8f0':'#1a2235',t3:d?'#94a3b8':'#6b7a90',blue:'#2c5ee8',bll:d?'rgba(44,94,232,.1)':'#eef2ff',green:'#0d9f6e',red:'#dc2626',amber:'#d97706',purple:'#7c3aed'};};
 
@@ -82,7 +77,7 @@ function paint(){
     <div style="font-size:22px;font-weight:700;color:${c.text}">${TITLE}</div>
     <span style="font-size:11px;color:${c.t3}">${new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'short',year:'numeric'})}</span>
     <span style="flex:1"></span>
-    ${p.canAdd?`<button id="_add" style="padding:8px 18px;background:${c.green};color:#fff;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">+ Nueva referencia</button>`:''}
+    ${p.canAdd?`<button id="_add" style="padding:8px 18px;background:${c.green};color:#fff;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">+ Añadir ingreso</button>`:''}
   </div>
   <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;background:${c.card};border:1px solid ${c.border};border-radius:12px">
     <div style="display:flex;align-items:center;gap:3px;padding:8px 12px;border-bottom:1px solid ${c.border};overflow-x:auto;flex-shrink:0;flex-wrap:wrap;scrollbar-width:none">
@@ -158,7 +153,7 @@ function cell(d,id,p,c){
     case'matricula':return`<td style="padding:8px 12px"><span style="background:#1a2235;color:#fff;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;cursor:pointer;display:inline-block" onclick="window.${PFX}Edit('${d.id}')">${safeHtml(d.matricula||'—')}</span>${d.remolque?`<br><span style="background:${c.bg2};color:${c.t3};font-family:monospace;font-size:10px;padding:2px 6px;border-radius:4px;display:inline-block;margin-top:2px">${safeHtml(d.remolque)}</span>`:''}</td>`;
     case'remolque':return`<td style="padding:8px 12px;font-size:11px;color:${c.t3}">${safeHtml(d.remolque||'–')}</td>`;
     case'tipoVehiculo':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.tipoVehiculo||'–')}</td>`;
-    case'referencia':return`<td style="padding:8px 12px;font-size:11px;font-family:monospace;color:${c.t3}">${safeHtml(d.referencia||'–')}</td>`;case'tipoCarga':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.tipoCarga||'–')}</td>`;case'llamador':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.llamador||'–')}</td>`;
+    case'llamador':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.llamador||'–')}</td>`;
     case'conductor':return`<td style="padding:8px 12px">${d.nombre?`<b style="font-size:12px">${safeHtml(d.nombre)} ${safeHtml(d.apellido||'')}</b>`:''}${d.empresa?`<br><span style="font-size:11px;color:${c.t3}">${safeHtml(d.empresa)}</span>`:''}${!d.nombre&&!d.empresa?'–':''}</td>`;
     case'empresa':return`<td style="padding:8px 12px;font-size:11px;color:${c.t3}">${safeHtml(d.empresa||'–')}</td>`;
     case'telefono':return`<td style="padding:8px 12px">${_tel(d.telPais||'+34',d.telefono)}</td>`;
@@ -225,7 +220,7 @@ function openModal(editId=null){
     fh+='</div></div>';
   });
   m.innerHTML=`<div style="background:${c.card};border-radius:20px;border:1px solid ${c.border};box-shadow:0 20px 60px rgba(0,0,0,.14);width:100%;max-width:660px;max-height:92vh;overflow-y:auto;color:${c.text}">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px 12px;border-bottom:1px solid ${c.border}"><div style="font-size:18px;font-weight:700">${editId?'✏️ Editar':'+ Nueva Referencia</div><button style="padding:5px 12px;background:${c.bg2};color:${c.t3};border:1px solid ${c.border};border-radius:8px;font-size:12px;cursor:pointer" onclick="this.closest('#_m${MOD}').remove()">✕ Cerrar</button></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px 12px;border-bottom:1px solid ${c.border}"><div style="font-size:18px;font-weight:700">${editId?'✏️ Editar':'+ Nuevo'} ${TITLE}</div><button style="padding:5px 12px;background:${c.bg2};color:${c.t3};border:1px solid ${c.border};border-radius:8px;font-size:12px;cursor:pointer" onclick="this.closest('#_m${MOD}').remove()">✕ Cerrar</button></div>
     <div id="_afMsg" style="display:none;padding:8px 22px;background:#ecfdf5;color:#15803d;font-size:12px;font-weight:600"></div>
     <div style="padding:16px 22px">${fh}</div>
     <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 22px 18px;border-top:1px solid ${c.border}">
@@ -241,7 +236,7 @@ function openModal(editId=null){
     if(_posAuto&&!editId)fd.pos=nextPos(_data);
     try{
       if(editId){const{fsUpdate}=await import('./firestore.js');await fsUpdate(`${COLL}/${editId}`,fd);_log('edit',fd.matricula,'Edición');}
-      else{fd.fecha=fd.fecha||nowLocal();fd.estado='EN_RECINTO';fd.creadoPor=_u.uid;const{fsAdd}=await import('./firestore.js');await fsAdd(COLL,fd);_log('new',fd.matricula,'Nueva referencia');}
+      else{fd.fecha=fd.fecha||nowLocal();fd.estado='EN_RECINTO';fd.creadoPor=_u.uid;const{fsAdd}=await import('./firestore.js');await fsAdd(COLL,fd);_log('new',fd.matricula,'Nuevo ingreso');}
       toast('✅ Guardado','#10b981');m.remove();
     }catch(e){toast('❌ Error','#ef4444');}
   };
