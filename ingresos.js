@@ -176,7 +176,7 @@ export function renderIngresos() {
       <input type="date" value="${iF.fecha||''}"
         oninput="iF.fecha=this.value;debounceSearch('ingresos-date',renderIngresos)"
         style="height:32px;padding:4px 8px;font-size:11px;width:auto;min-width:110px;max-width:130px">
-      <span class="pill" style="border:1.5px solid ${iF.activos?'var(--blue)':'var(--border)'};background:${iF.activos?'var(--blue)':'var(--bg2)'};color:${iF.activos?'#fff':'var(--text3)';cursor:pointer"
+      <span class="pill" style="border:1.5px solid ${iF.activos?'var(--blue)':'var(--border)'};background:${iF.activos?'var(--blue)':'var(--bg2)'};color:${iF.activos?'#fff':'var(--text3)'};cursor:pointer"
         onclick="iF.activos=!iF.activos;renderIngresos()">Solo activos</span>
       ${iF.q||iF.fecha||iF.hall||iF.activos
         ? `<span class="pill pill-r" onclick="iF.q='';iF.fecha='';iF.hall='';iF.activos=false;renderIngresos()">✕</span>` : ''}
