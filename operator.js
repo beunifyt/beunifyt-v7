@@ -13,7 +13,6 @@ try{_sbPos=localStorage.getItem('beu_sbpos')||'left';}catch(e){}
 try{_sbCol=localStorage.getItem('beu_sbcol')==='1';}catch(e){}
 
 const MODS={dash:()=>import('./dashboard.js'),ingresos:()=>import('./ingresos.js'),ingresos2:()=>import('./ingresos2.js'),flota:()=>import('./flota.js'),conductores:()=>import('./conductores.js'),agenda:()=>import('./agenda.js'),analytics:()=>import('./analytics.js'),vehiculos:()=>import('./vehiculos.js'),auditoria:()=>import('./auditoria.js'),recintos:()=>import('./recintos.js'),usuarios:()=>import('./usuarios.js'),eventos:()=>import('./eventos.js'),papelera:()=>import('./papelera.js'),mensajes:()=>import('./mensajes.js'),impresion:()=>import('./impresion.js'),empresas:()=>import('./empresas.js'),migracion:()=>import('./migracion.js')};
-const TICO={dash:'📊',ingresos:'🔖',ingresos2:'🚛',flota:'📦',conductores:'👤',agenda:'📅',analytics:'📈',vehiculos:'📜',auditoria:'📂',recintos:'🏟',usuarios:'👥',eventos:'📅',papelera:'🗑',mensajes:'💬',impresion:'🖨',empresas:'🏢',migracion:'💾'};
 const LOGO=`<svg viewBox="0 0 140 140" width="30" height="30"><rect width="140" height="140" rx="28" fill="#030812"/><polygon points="70,10 122,40 122,100 70,130 18,100 18,40" stroke="#00ffc8" stroke-width="2" fill="#00ffc808"/><polygon points="70,28 106,49 106,91 70,112 34,91 34,49" stroke="#00ffc8" stroke-width="1.2" fill="none" opacity="0.4"/><circle cx="70" cy="70" r="9" fill="#00ffc8"/><circle cx="70" cy="70" r="3.5" fill="#030812"/></svg>`;
 const BRAND=`<span style="font-family:'Oxanium',system-ui,monospace;font-size:14px;font-weight:700;letter-spacing:-.3px"><span style="color:#00ffc8">Be</span><span style="color:#e2e8f0">Unify</span><span style="color:#00ffc8">T</span></span>`;
 
@@ -33,10 +32,10 @@ function _paint(){
     :`<div id="_sico" style="padding:${isV?'6px 10px':'12px 12px 8px'};display:flex;align-items:center;gap:8px;cursor:pointer;background:#030812;border-radius:10px;margin:${isV?'4px':'6px 6px 2px'};flex-shrink:0" title="Click: posición · Doble click: colapsar">${LOGO}${!isV||!_sbCol?BRAND:''}</div>`;
 
   // Tabs
-  const tabs=u.tabs.map(t=>{const l=tr('tabs',t);if(l===null)return'';const ic=TICO[t]||'📄';
-    if(isV)return`<button class="_si" data-t="${t}" style="display:flex;align-items:center;gap:5px;padding:6px 10px;border:none;background:none;cursor:pointer;font-size:11px;font-weight:500;color:${tm};border-radius:8px;white-space:nowrap;flex-shrink:0">${ic} ${l}</button>`;
-    if(_sbCol)return`<button class="_si" data-t="${t}" title="${l}" style="display:flex;align-items:center;justify-content:center;padding:9px 0;border:none;background:none;cursor:pointer;font-size:15px;margin:1px 4px;border-radius:8px;width:44px">${ic}</button>`;
-    return`<button class="_si" data-t="${t}" style="display:flex;align-items:center;gap:8px;padding:7px 12px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:500;color:${tm};margin:1px 6px;border-radius:8px;width:calc(100% - 12px);text-align:left">${ic}<span>${l}</span></button>`;
+  const tabs=u.tabs.map(t=>{const l=tr('tabs',t);if(l===null)return'';
+    if(isV)return`<button class="_si" data-t="${t}" style="display:flex;align-items:center;gap:5px;padding:6px 10px;border:none;background:none;cursor:pointer;font-size:11px;font-weight:500;color:${tm};border-radius:8px;white-space:nowrap;flex-shrink:0">${l}</button>`;
+    if(_sbCol){const ic=l.slice(0,2);return`<button class="_si" data-t="${t}" title="${l}" style="display:flex;align-items:center;justify-content:center;padding:9px 0;border:none;background:none;cursor:pointer;font-size:15px;margin:1px 4px;border-radius:8px;width:44px">${ic}</button>`;}
+    return`<button class="_si" data-t="${t}" style="display:flex;align-items:center;gap:8px;padding:7px 12px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:500;color:${tm};margin:1px 6px;border-radius:8px;width:calc(100% - 12px);text-align:left">${l}</button>`;
   }).join('');
 
   // Footer
