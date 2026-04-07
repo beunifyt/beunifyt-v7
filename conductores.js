@@ -8,6 +8,7 @@ import { tr, trFree } from './langs.js';
 import { safeHtml, uid, toast, nowLocal, formatDate, debounce, normPlate } from './utils.js';
 import { initFields, getVisibleFormFields, initCols, getVisCols, renderCamposHTML, renderColPanelHTML, autoFillByPlate, nextPos, importExcel as feImport } from './field-engine.js';
 import { scannerButtonHTML, scannerConfigHTML } from './scanner.js';
+import { getCurrentTheme, getThemeColors } from './themes.js';
 
 const MOD='conductores',COLL='conductores',TITLE='Conductores',ICON='👤',REQ_FIELD='nombre';
 const HAS_ESPECIAL=false;
@@ -39,8 +40,8 @@ let _c,_u,_data=[],_filtered=[],_unsub,_especiales=[],_historial=[];
 let _sub='lista',_q='',_hallF='',_activos=false,_dateFrom='',_dateTo='',_statusF='';
 let _sortCol='pos',_sortDir='desc',_autoFill=true,_posAuto=true;
 const PFX='_cd';
-function dk(){return _u?.tema==='dark';}
-const C=()=>{const d=dk();return{bg:d?'#0f172a':'#f4f5f7',card:d?'#1e293b':'#fff',bg2:d?'#0f172a':'#f8f9fc',border:d?'#334155':'#e4e7ec',text:d?'#e2e8f0':'#1a2235',t3:d?'#94a3b8':'#6b7a90',blue:'#2c5ee8',bll:d?'rgba(44,94,232,.1)':'#eef2ff',green:'#0d9f6e',red:'#dc2626',amber:'#d97706',purple:'#7c3aed'};};
+function dk(){const t=getThemeColors(getCurrentTheme());return t.group==='dark';}
+const C=()=>{const t=getThemeColors(getCurrentTheme());return{bg:t.bg,card:t.card,bg2:t.sb||t.bg,border:t.border,text:t.text,t3:t.t3,blue:t.acc,bll:t.accBg,green:'#0d9f6e',red:'#dc2626',amber:'#d97706',purple:'#7c3aed'};};
 
 export function render(ct,us){
   _c=ct;_u=us;_data=[];_filtered=[];_sub='lista';
