@@ -2,15 +2,19 @@
 // BeUnifyT v8 — app.js — Punto de entrada
 // Revisa sesión → login o carga directa
 // ═══════════════════════════════════════════════════════════
+
 import { AppState } from './state.js';
 import { detectLang } from './langs.js';
+
 const SPLASH = document.getElementById('splash');
 const APP = document.getElementById('app');
+
 async function boot() {
   try {
     // Detectar idioma temporal del navegador
     const browserLang = detectLang(navigator.language);
     AppState.set('currentLang', browserLang);
+
     // ¿Hay sesión guardada?
     const raw = localStorage.getItem('beu_session');
     if (raw) {
@@ -26,6 +30,7 @@ async function boot() {
       } catch (e) { /* sesión corrupta, ir a login */ }
       localStorage.removeItem('beu_session');
     }
+
     // No hay sesión → pintar login
     showLogin();
   } catch (e) {
@@ -33,11 +38,13 @@ async function boot() {
     showLogin();
   }
 }
+
 async function resumeSession(session) {
   try {
     const { initFirestore } = await import('./firestore.js');
     const { FIREBASE_CONFIG } = await import('./config.js');
     await initFirestore(FIREBASE_CONFIG);
+
     const { fsGet } = await import('./firestore.js');
     const userData = await fsGet(`users/${session.uid}`);
     if (!userData) {
@@ -45,6 +52,7 @@ async function resumeSession(session) {
       showLogin();
       return;
     }
+
     const usuario = buildUsuario(userData, session.uid);
     AppState.set('currentUser', usuario);
     AppState.set('currentLang', usuario.idioma);
@@ -55,17 +63,20 @@ async function resumeSession(session) {
     showLogin();
   }
 }
+
 function showLogin() {
   SPLASH.style.display = 'none';
   APP.style.display = 'block';
-  import('./auth.js').then(m => m.initAuth());
+  import('./auth.js').then(m => m.renderLogin(APP));
 }
+
 export function launchShell(usuario) {
   SPLASH.style.display = 'none';
   APP.style.display = 'block';
   APP.innerHTML = '';
-  import('./operator.js').then(m => m.initOperator());
+  import('./operator.js').then(m => m.renderShell(APP, usuario));
 }
+
 export function buildUsuario(data, uid) {
   return {
     uid,
@@ -82,6 +93,7 @@ export function buildUsuario(data, uid) {
     twoFA: data.twoFA || false,
   };
 }
+
 export function logout() {
   localStorage.removeItem('beu_session');
   AppState.set('currentUser', null);
@@ -89,5 +101,6 @@ export function logout() {
   APP.innerHTML = '';
   showLogin();
 }
+
 // Arrancar
 boot();
