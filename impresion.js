@@ -1710,17 +1710,29 @@ function _finalizeGlobal() {
 
 // ── Main export ──────────────────────────────────────────────────
 async function _initImpresionInner(containerId) {
-  const el = document.getElementById(containerId); if(!el)return;
-  _currentTheme = _loadThemePref();
-  await Promise.all([_loadCfg('ing1'),_loadCfg('ing2'),_loadCfg('ag'),_loadCfg('emb')]);
-  await _loadTpls();
-  _renderShell(el);
-  _bindGlobalEvents();
-  _finalizeGlobal();
-  await _switchSub(_ck, true);
+  const el = document.getElementById(containerId);
+  if(!el){
+    console.error('[impresion] Container not found:', containerId);
+    var tc = document.getElementById('tabContent');
+    if(tc) tc.innerHTML='<div style="padding:20px;color:red">Error: contenedor "'+containerId+'" no encontrado</div>';
+    return;
+  }
+  try {
+    _currentTheme = _loadThemePref();
+    await Promise.all([_loadCfg('ing1'),_loadCfg('ing2'),_loadCfg('ag'),_loadCfg('emb')]);
+    await _loadTpls();
+    _renderShell(el);
+    _bindGlobalEvents();
+    _finalizeGlobal();
+    await _switchSub(_ck, true);
+  } catch(err) {
+    console.error('[impresion] Init error:', err);
+    el.innerHTML='<div style="padding:20px;color:red;font-size:13px"><b>Error en impresion:</b><br>'+err.message+'<br><pre style="font-size:10px;margin-top:8px;white-space:pre-wrap">'+err.stack+'</pre></div>';
+  }
 }
 
 export async function initImpresion(containerId) {
+  console.log('[impresion] initImpresion called with:', containerId);
   return _initImpresionInner(containerId);
 }
 
