@@ -23,6 +23,9 @@ export const THEMES = {
   retinaDark: { name:'Retina Dark',  group:'dark',  bg:'#090b0d', card:'#0c1218', sb:'#050708', text:'#b8c8d8', t3:'#4a6070', border:'#1e2c38', acc:'#00c8ff', accBg:'rgba(0,200,255,.1)' },
   frosted:    { name:'Frosted macOS',group:'dark',  bg:'#1a1a2e', card:'rgba(255,255,255,.08)', sb:'rgba(255,255,255,.05)', text:'#f0f0f5', t3:'#8888a0', border:'rgba(255,255,255,.1)', acc:'#5882ff', accBg:'rgba(88,130,255,.12)' },
   fluidDark:  { name:'Fluid Motion', group:'dark',  bg:'#0a0a14', card:'rgba(10,10,20,.8)', sb:'#080810', text:'#e0e0f0', t3:'#6a6a80', border:'rgba(255,255,255,.08)', acc:'#ec4899', accBg:'rgba(236,72,153,.1)' },
+
+  v6a:        { name:'v6 Claro',     group:'light', bg:'#f4f5f7', card:'#fff',    sb:'#fff',    text:'#1e2431', t3:'#8892a4', border:'#e0e5ef', acc:'#2c5ee8', accBg:'#eef2ff', accBorder:'#d0dbf8', inp:'#f8f9fc', inpBorder:'#e0e5ef', muted:'#b0b9c8', rowHover:'#f5f7ff' },
+  v6b:        { name:'v6 Oscuro',    group:'dark',  bg:'#1e2a3a', card:'#172638', sb:'#152030', text:'#eef2f8', t3:'#4a6080', border:'#2e4060', acc:'#d4a855', accBg:'rgba(212,168,85,.1)', accBorder:'rgba(212,168,85,.25)', inp:'rgba(255,255,255,.04)', inpBorder:'#2e4060', muted:'#2e4060', rowHover:'rgba(255,255,255,.025)' },
 };
 
 const THEME_LIST = Object.entries(THEMES).map(([id, t]) => ({ id, ...t }));
