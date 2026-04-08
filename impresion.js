@@ -8,9 +8,9 @@
 //   imagen de guía (no se imprime), modo troquelado.
 // ═══════════════════════════════════════════════════════════════════
 
-import { AppState }          from './state.js';
-import { getDB }             from './firestore.js';
-import { toast, safeHtml, formatDate } from './utils.js';
+import { AppState }          from '../state.js';
+import { getDB }             from '../firestore.js';
+import { toast, safeHtml, formatDate } from '../utils.js';
 const formatDateTime = formatDate; // alias
 
 // localDB polyfill (localStorage-based)
@@ -79,6 +79,18 @@ const FIELD_LABELS = {
   comentario:'Comentario',horario:'Hora',eventoNombre:'Evento',
   pase:'Pase',gpsUrl:'GPS',
 };
+
+
+// ── TEMAS VISUALES ──────────────────────────────────────────────
+const THEMES = {
+  classic: { id:'classic', label:'Clásico',       icon:'📄', desc:'El diseño original' },
+  dark:    { id:'dark',    label:'Dark Studio',    icon:'🌙', desc:'Oscuro profesional' },
+  warm:    { id:'warm',    label:'Warm Editorial', icon:'☀️', desc:'Cálido y limpio' },
+  glass:   { id:'glass',   label:'Modern Glass',   icon:'💎', desc:'Moderno con propiedades' },
+};
+let _currentTheme = 'classic';
+function _loadThemePref() { try { return localStorage.getItem('beu_impTheme') || 'classic'; } catch(e) { return 'classic'; } }
+function _saveThemePref(t) { try { localStorage.setItem('beu_impTheme', t); } catch(e) {} }
 
 // ── Estado del módulo ─────────────────────────────────────────────
 let _ck        = 'ing1';   // subtab activo: ing1 | ing2 | ag
@@ -203,10 +215,127 @@ async function _deleteTpl(name) {
 // ── Punto de entrada público ───────────────────────────────────────
 
 // ── Render shell (estructura fija, no se re-renderiza) ─────────────
-function _renderShell(el) {
-  el.innerHTML = `
-<style>
-#impWrap{display:flex;height:calc(100vh - var(--hdr-h,90px));overflow:hidden}
+
+function _renderThemePicker() {
+  return `<div id="impThemePicker" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 12px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0">
+  <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-right:6px">🎨 Tema</span>
+  ${Object.values(THEMES).map(t => `<button class="btn btn-xs" data-theme="${t.id}" onclick="window._imp.setTheme('${t.id}')" title="${t.desc}" style="padding:4px 12px;border-radius:20px;font-size:10px;font-weight:600;display:flex;align-items:center;gap:4px;transition:all .2s;${_currentTheme===t.id?'background:#7c3aed;color:#fff;border-color:#7c3aed;box-shadow:0 2px 8px rgba(124,58,237,.3)':'background:var(--bg3);color:var(--text2);border:.5px solid var(--border)'}"><span style="font-size:13px">${t.icon}</span> ${t.label}</button>`).join('')}
+</div>`;
+}
+
+
+function _getThemeCSS(theme) {
+  const base_chip = `.imp-pfc{position:absolute;border-radius:2px;padding:2px 16px 2px 4px;font-weight:700;cursor:move;z-index:10;display:block;line-height:1.4;user-select:none;white-space:normal;word-break:break-word;overflow:hidden;min-width:20px;min-height:14px;box-sizing:border-box}
+.imp-pfc.pfc-sel{z-index:20}
+.imp-pfc.pfc-locked{cursor:default;border-style:dashed;opacity:.8}
+.imp-pfc .pfc-rm{position:absolute;top:1px;right:2px;font-size:9px;cursor:pointer;line-height:1;z-index:5}
+.imp-pfc .pfc-rh{position:absolute;bottom:0;right:0;width:10px;height:10px;cursor:se-resize;z-index:30}
+.imp-pfc .pfc-rh::after{content:'';position:absolute;bottom:1px;right:1px;width:0;height:0;border-style:solid;border-width:0 0 6px 6px;opacity:.7}`;
+
+  const base_layout = `#impWrap{display:flex;height:calc(100vh - var(--hdr-h,90px));overflow:hidden}
+#impPvWrap{flex-shrink:0}
+.imp-gh{position:absolute;left:0;right:0;height:1px;pointer-events:none;z-index:50;display:none}
+.imp-gv{position:absolute;top:0;bottom:0;width:1px;pointer-events:none;z-index:50;display:none}
+.imp-tgl{display:flex;align-items:center;gap:4px;cursor:pointer;margin-left:auto}
+.imp-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:none;align-items:center;justify-content:center}`;
+
+  if (theme === 'dark') return base_layout + base_chip + `
+#impLeft{width:260px;min-width:260px;flex-shrink:0;overflow-y:auto;background:#16213e;padding:8px;display:flex;flex-direction:column;gap:6px;border-right:1px solid #1e2d45}
+#impRight{flex:1;overflow:hidden;display:flex;flex-direction:column;background:#0d1321}
+#impToolbar{display:flex;align-items:center;gap:4px;padding:6px 10px;background:#0f1729;border-bottom:1px solid #1e2d45;flex-shrink:0;flex-wrap:wrap}
+#impStatus{padding:2px 10px;font-size:9px;color:#5e7ea1;background:#0f1729;border-bottom:1px solid #1e2d45;flex-shrink:0;display:flex;align-items:center;gap:8px;min-height:20px}
+#impCvArea{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:12px;background:#0d1321}
+#impCvBottom{padding:3px 10px;font-size:9px;color:#5e7ea1;background:#0f1729;border-top:1px solid #1e2d45;flex-shrink:0;text-align:center}
+#impPv{position:relative;background:#fff;border:1px solid #2a3a52;overflow:hidden;transform-origin:top left;flex-shrink:0;box-shadow:0 4px 24px rgba(0,0,0,.5)}
+.imp-pfc{border:1.5px solid #6c63ff;background:rgba(108,99,255,.08)}
+.imp-pfc.pfc-sel{border:2px solid #a29bfe;box-shadow:0 0 0 2px rgba(108,99,255,.3),0 0 12px rgba(108,99,255,.15)}
+.imp-pfc .pfc-rm{color:#666}.imp-pfc .pfc-rm:hover{color:#ff6b6b}
+.imp-pfc .pfc-rh::after{border-color:transparent transparent #6c63ff transparent}
+.imp-gh{background:#6c63ff}.imp-gv{background:#ff6b6b}
+.imp-fpi{display:flex;align-items:center;gap:3px;padding:3px 6px;border-radius:20px;border:1px solid #2a3a52;background:#1a1a2e;font-size:10px;font-weight:500;user-select:none;margin-bottom:2px;color:#c8d6e5;transition:border-color .15s}
+.imp-fpi:hover{border-color:#4a6a8a}
+.imp-sec{border:1px solid #1e2d45;border-radius:6px;overflow:hidden;background:#1a1a2e}
+.imp-sec-hdr{display:flex;align-items:center;gap:4px;padding:5px 8px;background:#16213e;font-size:8px;font-weight:500;text-transform:uppercase;letter-spacing:1.5px;color:#5e7ea1}
+.imp-tgl-t{width:24px;height:13px;border-radius:7px;background:#2a3a52;position:relative;flex-shrink:0;transition:background .15s}
+.imp-tgl-t.on{background:#6c63ff}
+.imp-tgl-t .th{width:9px;height:9px;border-radius:50%;background:#c8d6e5;position:absolute;top:2px;left:2px;transition:left .15s}
+.imp-tgl-t.on .th{left:13px}
+.imp-sep{width:1px;height:16px;background:#1e2d45;flex-shrink:0;margin:0 2px}
+.imp-modal{background:#16213e;border:1px solid #2a3a52;border-radius:12px;padding:16px;min-width:320px;max-width:500px;box-shadow:0 12px 48px rgba(0,0,0,.5);color:#c8d6e5}
+.imp-bentry{display:flex;align-items:center;gap:6px;padding:5px;border-radius:6px;border:1px solid #1e2d45;background:#1a1a2e;margin-bottom:3px;color:#c8d6e5}
+#impLeft .btn{background:#1a1a2e;border:1px solid #2a3a52;color:#c8d6e5;transition:all .15s}
+#impLeft .btn:hover{border-color:#4a6a8a;background:#1e2d45}
+#impLeft .btn-p,#impLeft .btn.btn-p{background:#6c63ff!important;color:#fff!important;border-color:#6c63ff!important;box-shadow:0 2px 8px rgba(108,99,255,.3)}
+#impToolbar .btn{background:transparent;border:1px solid #1e2d45;color:#7a8ba8;border-radius:6px;min-width:28px;min-height:28px;transition:all .15s}
+#impToolbar .btn:hover{background:#1e2d45;color:#c8d6e5}
+#impToolbar .btn-p{background:#6c63ff!important;color:#fff!important;border-color:#6c63ff!important;box-shadow:0 2px 8px rgba(108,99,255,.35)}
+#impLeft select,#impLeft input[type="text"],#impLeft input:not([type]){background:#1a1a2e;border:1px solid #2a3a52;color:#c8d6e5;border-radius:4px}
+#impLeft textarea{background:#1a1a2e;border-color:#2a3a52;color:#c8d6e5}`;
+
+  if (theme === 'warm') return base_layout + base_chip + `
+#impLeft{width:270px;min-width:270px;flex-shrink:0;overflow-y:auto;background:#fff;padding:8px;display:flex;flex-direction:column;gap:5px;border-right:1px solid #e8e3da}
+#impRight{flex:1;overflow:hidden;display:flex;flex-direction:column;background:#f7f5f0}
+#impToolbar{display:flex;align-items:center;gap:3px;padding:5px 12px;background:#faf8f4;border-bottom:1px solid #e8e3da;flex-shrink:0;flex-wrap:wrap}
+#impStatus{padding:3px 12px;font-size:9px;color:#8a7e6b;background:#fff;border-bottom:1px solid #e8e3da;flex-shrink:0;display:flex;align-items:center;gap:8px;min-height:20px}
+#impCvArea{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:12px;background:repeating-conic-gradient(#eae6dd 0% 25%,#f2efe8 0% 50%) 0/16px 16px}
+#impCvBottom{padding:3px 12px;font-size:9px;color:#8a7e6b;background:#fff;border-top:1px solid #e8e3da;flex-shrink:0;text-align:center}
+#impPv{position:relative;background:#fff;border:1px solid #e8e3da;overflow:hidden;transform-origin:top left;flex-shrink:0;box-shadow:0 2px 16px rgba(0,0,0,.08)}
+.imp-pfc{border:1.5px solid rgba(45,80,22,.4);background:rgba(45,80,22,.06)}
+.imp-pfc.pfc-sel{border:2px solid #2d5016;box-shadow:0 0 0 2px rgba(45,80,22,.2)}
+.imp-pfc .pfc-rm{color:#b0a48f}.imp-pfc .pfc-rm:hover{color:#c0392b}
+.imp-pfc .pfc-rh::after{border-color:transparent transparent #2d5016 transparent}
+.imp-gh{background:#2d5016}.imp-gv{background:#c0392b}
+.imp-fpi{display:flex;align-items:center;gap:3px;padding:4px 8px;border-radius:4px;border:none;border-bottom:1px solid #f0ebe1;background:transparent;font-size:10px;font-weight:500;user-select:none;margin-bottom:0;color:#5a4e3c;transition:background .1s}
+.imp-fpi:hover{background:#f8f5ef}
+.imp-sec{border:none;border-top:1px solid #e8e3da;border-radius:0;overflow:hidden}
+.imp-sec-hdr{display:flex;align-items:center;gap:4px;padding:6px 10px;background:#faf8f4;font-size:8px;font-weight:500;text-transform:uppercase;letter-spacing:1px;color:#8a7e6b}
+.imp-tgl-t{width:24px;height:13px;border-radius:7px;background:#ddd6c8;position:relative;flex-shrink:0;transition:background .15s}
+.imp-tgl-t.on{background:#2d5016}
+.imp-tgl-t .th{width:9px;height:9px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left .15s}
+.imp-tgl-t.on .th{left:13px}
+.imp-sep{width:1px;height:18px;background:#e8e3da;flex-shrink:0;margin:0 3px}
+.imp-modal{background:#fff;border:1px solid #e8e3da;border-radius:12px;padding:18px;min-width:320px;max-width:500px;box-shadow:0 8px 32px rgba(0,0,0,.12);color:#3d3425}
+.imp-bentry{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;border:1px solid #e8e3da;background:#faf8f4;margin-bottom:3px;color:#5a4e3c}
+#impToolbar .btn{background:#fff;border:1.5px solid #ddd6c8;color:#5a4e3c;border-radius:5px;transition:all .12s;min-height:26px}
+#impToolbar .btn:hover{border-color:#b0a48f;background:#f0ebe1}
+#impToolbar .btn-p{background:#2d5016!important;color:#fff!important;border-color:#2d5016!important;box-shadow:inset 0 2px 4px rgba(0,0,0,.15),0 1px 3px rgba(45,80,22,.2)}
+#impLeft .btn{border:1.5px solid #ddd6c8;color:#5a4e3c;border-radius:5px;background:#fff;transition:all .12s}
+#impLeft .btn:hover{border-color:#b0a48f}
+#impLeft .btn-p{background:#2d5016!important;color:#fff!important;border-color:#2d5016!important;box-shadow:0 2px 6px rgba(45,80,22,.2)}`;
+
+  if (theme === 'glass') return base_layout + base_chip + `
+#impLeft{width:260px;min-width:260px;flex-shrink:0;overflow-y:auto;background:#fff;padding:8px;display:flex;flex-direction:column;gap:4px;box-shadow:2px 0 8px rgba(0,0,0,.04)}
+#impRight{flex:1;overflow:hidden;display:flex;flex-direction:column;background:#e8ecf1}
+#impToolbar{display:flex;align-items:center;gap:3px;padding:6px 10px;background:#fff;border-bottom:1px solid #e2e8f0;flex-shrink:0;flex-wrap:wrap}
+#impStatus{padding:3px 10px;font-size:9px;color:#94a3b8;background:#fff;border-bottom:1px solid #e2e8f0;flex-shrink:0;display:flex;align-items:center;gap:8px;min-height:20px}
+#impCvArea{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:12px;background:#e8ecf1}
+#impCvBottom{padding:3px 10px;font-size:9px;color:#94a3b8;background:#fff;border-top:1px solid #e2e8f0;flex-shrink:0;text-align:center}
+#impPv{position:relative;background:#fff;border:none;overflow:hidden;transform-origin:top left;flex-shrink:0;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+.imp-pfc{border:1.5px solid rgba(102,126,234,.4);background:rgba(102,126,234,.06)}
+.imp-pfc.pfc-sel{border:2px solid #667eea;box-shadow:0 0 0 2px rgba(102,126,234,.2)}
+.imp-pfc .pfc-rm{color:#94a3b8}.imp-pfc .pfc-rm:hover{color:#e53e3e}
+.imp-pfc .pfc-rh::after{border-color:transparent transparent #667eea transparent}
+.imp-gh{background:#667eea}.imp-gv{background:#e53e3e}
+.imp-fpi{display:flex;align-items:center;gap:3px;padding:4px 8px;border-radius:6px;border:none;background:transparent;font-size:10px;font-weight:500;user-select:none;margin-bottom:2px;color:#475569;transition:background .1s}
+.imp-fpi:hover{background:#f0f4f8}
+.imp-sec{border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;background:#fff}
+.imp-sec-hdr{display:flex;align-items:center;gap:4px;padding:5px 10px;background:#f8fafc;font-size:8px;font-weight:500;text-transform:uppercase;letter-spacing:1px;color:#94a3b8}
+.imp-tgl-t{width:24px;height:13px;border-radius:7px;background:#e2e8f0;position:relative;flex-shrink:0;transition:background .15s}
+.imp-tgl-t.on{background:#667eea}
+.imp-tgl-t .th{width:9px;height:9px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left .15s}
+.imp-tgl-t.on .th{left:13px}
+.imp-sep{width:1px;height:20px;background:#e2e8f0;flex-shrink:0;margin:0 2px}
+.imp-modal{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;min-width:320px;max-width:500px;box-shadow:0 12px 40px rgba(0,0,0,.12);color:#334155}
+.imp-bentry{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;margin-bottom:3px;color:#475569}
+#impToolbar .btn{background:#fff;border:1.5px solid #e2e8f0;color:#64748b;border-radius:6px;min-width:28px;min-height:28px;transition:all .12s}
+#impToolbar .btn:hover{border-color:#94a3b8;background:#f8fafc}
+#impToolbar .btn-p{background:#667eea!important;color:#fff!important;border-color:#667eea!important;box-shadow:0 2px 6px rgba(102,126,234,.25),inset 0 -2px 0 rgba(0,0,0,.1)}
+#impLeft .btn{border:1.5px solid #e2e8f0;color:#64748b;border-radius:6px;background:#fff;transition:all .12s}
+#impLeft .btn:hover{border-color:#94a3b8}
+#impLeft .btn-p{background:#667eea!important;color:#fff!important;border-color:#667eea!important;box-shadow:0 2px 6px rgba(102,126,234,.25)}`;
+
+  // Classic (default)
+  return base_layout + base_chip + `
 #impLeft{width:280px;min-width:280px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);background:var(--bg2);padding:7px;display:flex;flex-direction:column;gap:5px}
 #impRight{flex:1;overflow:hidden;display:flex;flex-direction:column;background:var(--bg3)}
 #impToolbar{display:flex;align-items:center;gap:3px;padding:4px 7px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
@@ -214,29 +343,30 @@ function _renderShell(el) {
 #impCvArea{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:8px}
 #impCvBottom{padding:2px 7px;font-size:9px;color:var(--text3);background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0;text-align:center}
 #impPv{position:relative;background:#fff;border:1px solid #aaa;overflow:hidden;transform-origin:top left;flex-shrink:0}
-#impPvWrap{flex-shrink:0}
-.imp-pfc{position:absolute;border:1.5px solid #3b5bdb;background:rgba(235,245,255,.93);border-radius:2px;padding:2px 16px 2px 4px;font-weight:700;cursor:move;z-index:10;display:block;line-height:1.4;user-select:none;white-space:normal;word-break:break-word;overflow:hidden;min-width:20px;min-height:14px;box-sizing:border-box}
-.imp-pfc.pfc-sel{border:2px solid #2563eb;box-shadow:0 0 0 2px rgba(59,91,219,.3);z-index:20}
-.imp-pfc.pfc-locked{cursor:default;border-style:dashed;opacity:.8}
-.imp-pfc .pfc-rm{position:absolute;top:1px;right:2px;font-size:9px;color:#aaa;cursor:pointer;line-height:1;z-index:5}
-.imp-pfc .pfc-rm:hover{color:var(--red)}
-.imp-pfc .pfc-rh{position:absolute;bottom:0;right:0;width:10px;height:10px;cursor:se-resize;z-index:30}
-.imp-pfc .pfc-rh::after{content:'';position:absolute;bottom:1px;right:1px;width:0;height:0;border-style:solid;border-width:0 0 6px 6px;border-color:transparent transparent #3b5bdb transparent;opacity:.7}
-.imp-gh{position:absolute;left:0;right:0;height:1px;background:#3b5bdb;pointer-events:none;z-index:50;display:none}
-.imp-gv{position:absolute;top:0;bottom:0;width:1px;background:#e53e3e;pointer-events:none;z-index:50;display:none}
+.imp-pfc{border:1.5px solid #3b5bdb;background:rgba(235,245,255,.93)}
+.imp-pfc.pfc-sel{border:2px solid #2563eb;box-shadow:0 0 0 2px rgba(59,91,219,.3)}
+.imp-pfc .pfc-rm{color:#aaa}.imp-pfc .pfc-rm:hover{color:var(--red)}
+.imp-pfc .pfc-rh::after{border-color:transparent transparent #3b5bdb transparent}
+.imp-gh{background:#3b5bdb}.imp-gv{background:#e53e3e}
 .imp-fpi{display:flex;align-items:center;gap:3px;padding:2px 5px;border-radius:4px;border:.5px solid var(--border);background:var(--bg);font-size:10px;font-weight:500;user-select:none;margin-bottom:2px}
 .imp-sec{border:.5px solid var(--border);border-radius:5px;overflow:hidden}
 .imp-sec-hdr{display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--bg3);font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text3)}
-.imp-tgl{display:flex;align-items:center;gap:4px;cursor:pointer;margin-left:auto}
 .imp-tgl-t{width:24px;height:13px;border-radius:7px;background:var(--border2);position:relative;flex-shrink:0;transition:background .15s}
 .imp-tgl-t.on{background:var(--blue)}
 .imp-tgl-t .th{width:9px;height:9px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left .15s}
 .imp-tgl-t.on .th{left:13px}
 .imp-sep{width:1px;height:14px;background:var(--border);flex-shrink:0;margin:0 1px}
-.imp-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:none;align-items:center;justify-content:center}
 .imp-modal{background:var(--bg2);border-radius:10px;padding:16px;min-width:320px;max-width:500px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
-.imp-bentry{display:flex;align-items:center;gap:6px;padding:5px;border-radius:5px;border:.5px solid var(--border);background:var(--bg3);margin-bottom:3px}
-</style>
+.imp-bentry{display:flex;align-items:center;gap:6px;padding:5px;border-radius:5px;border:.5px solid var(--border);background:var(--bg3);margin-bottom:3px}`;
+}
+
+function _renderShell(el) {
+  el.innerHTML = `
+<style id="impThemeStyle">${_getThemeCSS(_currentTheme)}</style>
+
+
+
+${_renderThemePicker()}
 
 <div id="impWrap">
   <!-- ══ PANEL IZQUIERDO ══ -->
@@ -517,7 +647,24 @@ function _exposeGlobal() {
     togglePrintTpl:(id,el)=> _togglePrintTpl(id,el),
     onDrop:        (e) => _onDrop(e),
     onPvClick:     (e) => _onPvClick(e),
+    setTheme:      (t) => _setTheme(t),
   };
+}
+
+
+// ── Set theme ────────────────────────────────────────────────────
+function _setTheme(themeId) {
+  if (!THEMES[themeId]) return;
+  _currentTheme = themeId;
+  _saveThemePref(themeId);
+  const container = document.getElementById('impThemePicker')?.parentElement;
+  if (container) {
+    _renderShell(container);
+    _finalizeGlobal();
+    _switchSub(_ck, true).then(() => {
+      toast('🎨 Tema: ' + THEMES[themeId].label, 'var(--blue)');
+    });
+  }
 }
 
 // ── Switch subtab ──────────────────────────────────────────────────
@@ -1590,18 +1737,28 @@ async function _renderTplList() {
   const tpls = await _loadTpls();
   if (!tpls.length) { el.innerHTML=''; return; }
   el.innerHTML = `<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text3);margin:4px 0 3px">Plantillas guardadas</div>`
-    + tpls.map(t => `
-      <div style="padding:4px 5px;border-radius:4px;background:var(--bg3);border:.5px solid var(--border);margin-bottom:3px">
-        <div style="display:flex;align-items:center;gap:3px">
-          <span style="font-size:10px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="window._imp.loadTpl('${safeHtml(t.name)}')">📋 ${safeHtml(t.name)}</span>
-          <span style="font-size:8px;background:var(--bg4);padding:1px 4px;border-radius:8px;color:var(--text3)">${t.paperSize||'A4'}</span>
-          <span style="font-size:8px;background:var(--bg4);padding:1px 4px;border-radius:8px;color:var(--text3)">${t.mode==='troquel'?'✂':'📄'}</span>
-          <button onclick="window._imp.editTpl('${safeHtml(t.name)}')" style="background:none;border:none;cursor:pointer;font-size:11px;padding:0 2px" title="Editar">✏️</button>
-          <button onclick="window._imp.delTpl('${safeHtml(t.name)}')" style="background:none;border:none;cursor:pointer;font-size:11px;padding:0 2px;color:var(--red)" title="Eliminar">✕</button>
+    + tpls.map(t => {
+      const fl = t.fieldLayout || {};
+      const fieldCount = Object.keys(fl).length;
+      const miniLines = Object.entries(fl).slice(0,5).map(([k,p]) => {
+        const yy = Math.round((p.y||0) * 0.4);
+        const xx = Math.round((p.x||0) * 0.4);
+        return `<div style="position:absolute;left:${xx}px;top:${yy}px;width:${Math.min(18,(p.w||15)*0.4)}px;height:2px;background:#94a3b8;border-radius:1px"></div>`;
+      }).join('');
+      return `<div style="padding:5px;border-radius:6px;background:var(--bg3);border:.5px solid var(--border);margin-bottom:3px;display:flex;align-items:center;gap:6px">
+        <div style="width:36px;height:48px;background:#fff;border:1px solid var(--border);border-radius:3px;flex-shrink:0;position:relative;overflow:hidden">${miniLines}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="window._imp.loadTpl('${safeHtml(t.name)}')">📋 ${safeHtml(t.name)}</div>
+          <div style="font-size:8px;color:var(--text3)">${t.paperSize||'A4'} · ${t.mode==='troquel'?'✂':'📄'} · ${{ing1:'Ref',ing2:'Ing',ag:'Ag',emb:'Emb'}[t.cfgKey]||'—'} · ${fieldCount} campos</div>
+          <div style="font-size:7px;color:var(--text3)">${t.savedAt?new Date(t.savedAt).toLocaleDateString():''}</div>
         </div>
-        <div style="font-size:8px;color:var(--text3)">${t.savedAt?new Date(t.savedAt).toLocaleDateString():''} · ${{ing1:'Ref',ing2:'Ing',ag:'Ag'}[t.cfgKey]||'—'}</div>
-      </div>
-    `).join('');
+        <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
+          <button onclick="window._imp.editTpl('${safeHtml(t.name)}')" class="btn btn-xs btn-gh" style="padding:1px 5px;font-size:9px" title="Editar">✏️</button>
+          <button onclick="window._imp.loadTpl('${safeHtml(t.name)}')" class="btn btn-xs btn-gh" style="padding:1px 5px;font-size:9px" title="Cargar">📋</button>
+          <button onclick="window._imp.delTpl('${safeHtml(t.name)}')" class="btn btn-xs btn-gh" style="padding:1px 5px;font-size:9px;color:var(--red)" title="Eliminar">✕</button>
+        </div>
+      </div>`;
+    }).join('');
 }
 
 function _updateSubTabBtns() {
@@ -1648,12 +1805,14 @@ function _finalizeGlobal() {
     _togglePh,_savePh1Lang,_savePh2,_savePh3,
     _setCopias,_removeBatchEntry,
     setPaper: _setPaper,
+    setTheme: _setTheme,
   });
 }
 
 // ── Main export ──────────────────────────────────────────────────
 async function _initImpresionInner(containerId) {
   const el = document.getElementById(containerId); if(!el)return;
+  _currentTheme = _loadThemePref();
   await Promise.all([_loadCfg('ing1'),_loadCfg('ing2'),_loadCfg('ag'),_loadCfg('emb')]);
   await _loadTpls();
   _renderShell(el);
@@ -1683,24 +1842,4 @@ export async function printEntry(entry, eventName, cfgOverride) {
   const w = window.open('','_blank','width=880,height=1100,scrollbars=yes');
   if (w) { w.document.write(html); w.document.close(); }
   else toast('Activa ventanas emergentes','var(--amber)');
-}
-
-// ═══════════════════════════════════════════════════════════
-// Wrapper para v8 — operator.js llama render(container, usuario)
-// ═══════════════════════════════════════════════════════════
-export function render(container, usuario) {
-  // Crear un div con ID para que initImpresion lo encuentre
-  const id = 'impContainer_' + Date.now();
-  container.innerHTML = `<div id="${id}" style="height:100%;overflow:hidden"></div>`;
-  // Guardar usuario en AppState por si lo necesita
-  if (usuario) AppState.set('currentUser', usuario);
-  // Iniciar el módulo
-  initImpresion(id).catch(e => {
-    console.error('Impresión init error:', e);
-    container.innerHTML = `<div style="text-align:center;padding:40px;color:#ef4444"><div style="font-size:14px;font-weight:700">Error en Impresión</div><div style="font-size:12px;color:#94a3b8;margin-top:8px">${e.message}</div></div>`;
-  });
-  return () => {
-    // Cleanup: remove global event listeners if needed
-    if (window._imp) window._imp = null;
-  };
 }
