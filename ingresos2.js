@@ -57,7 +57,7 @@ let _sub='lista',_q='',_hallF='',_activos=false,_dateFrom='',_dateTo='',_statusF
 let _sortCol='pos',_sortDir='desc',_autoFill=true,_posAuto=true;
 const PFX='_i2'; // prefix para window bindings único
 function dk(){const t=getThemeColors(getCurrentTheme());return t.group==='dark';}
-const C=()=>{const t=getThemeColors(getCurrentTheme());return{bg:t.bg,card:t.card,bg2:t.sb||t.bg,border:t.border,text:t.text,t3:t.t3,blue:t.acc,bll:t.accBg,green:'#0d9f6e',red:'#dc2626',amber:'#d97706',purple:'#7c3aed'};};
+const C=()=>{const t=getThemeColors(getCurrentTheme());return{bg:t.bg,card:t.card,bg2:t.inp||t.bg,border:t.border,text:t.text,t3:t.t3,blue:t.acc,bll:t.accBg,green:t.green||'#0d9f6e',red:t.red||'#dc2626',amber:t.amber||'#d97706',purple:t.purple||'#7c3aed',inp:t.inp||t.bg,inpBorder:t.inpBorder||t.border,accBorder:t.accBorder||t.border,muted:t.muted||t.t3,rowHover:t.rowHover||t.bg};};
 
 export function render(ct,us){
   _c=ct;_u=us;_data=[];_filtered=[];_sub='lista';
@@ -289,7 +289,7 @@ window[PFX+'Edit']=(id)=>openModal(id);
 window[PFX+'Del']=(id)=>_del(id);
 window[PFX+'Sal']=(id)=>_sal(id);
 window[PFX+'React']=(id)=>_react(id);
-window[PFX+'Print']=(id)=>toast('🖨 Impresión (módulo impresión)','#2c5ee8');
+window[PFX+'Print']=async(id)=>{const d=_data.find(x=>x.id===id);if(!d){toast('Registro no encontrado','#ef4444');return;}try{const{printEntry}=await import('./impresion.js');await printEntry(d);}catch(e){toast('🖨 Abrir tab Impresión para configurar','#2c5ee8');}};
 window[PFX+'Cut']=(id)=>toast('✂ Troquelado (próximamente)','#7c3aed');
 window[PFX+'Track']=(id)=>toast('📡 Tracking (próximamente)','#2c5ee8');
 window[PFX+'NewAl']=()=>openAlM();

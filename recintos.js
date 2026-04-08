@@ -1,91 +1,115 @@
 // ═══════════════════════════════════════════════════════════
 // BeUnifyT v8 — recintos.js — Gestión de recintos
+// CRUD: nombre, ciudad, país, halls, puertas, atención
+// Solo SA/Supervisor puede editar
 // ═══════════════════════════════════════════════════════════
+import { AppState } from './state.js';
+import { tr, trFree } from './langs.js';
+import { safeHtml, uid, toast, nowLocal } from './utils.js';
+import { getCurrentTheme, getThemeColors } from './themes.js';
 
-import { trFree } from './langs.js';
-import { safeHtml, toast, nowLocal } from './utils.js';
+let _c,_u,_data=[],_unsub,_q='',_sortCol='nombre',_sortDir='asc';
+const C=()=>{const t=getThemeColors(getCurrentTheme());return{bg:t.bg,card:t.card,bg2:t.inp||t.bg,border:t.border,text:t.text,t3:t.t3,blue:t.acc,bll:t.accBg,green:t.green||'#0d9f6e',red:t.red||'#dc2626',amber:t.amber||'#d97706',purple:t.purple||'#7c3aed'};};
+function dk(){const t=getThemeColors(getCurrentTheme());return t.group==='dark';}
 
-let _c, _u, _data = [];
-
-export function render(c, u) { _c = c; _u = u; _data = []; paint(); loadData(); return () => {}; }
-function t(k) { return trFree('shell', k) || k; }
-
-function paint() {
-  const dk = _u.tema === 'dark', bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
-  _c.innerHTML = `
-    <div style="max-width:900px;margin:0 auto">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <span style="font-size:15px;font-weight:700">🏟 Recintos</span>
-        <button id="rec-add" style="padding:8px 14px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">+ ${t('add')}</button>
-      </div>
-      <div id="rec-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
-      <div id="rec-em" style="display:none;text-align:center;padding:40px;color:#94a3b8;font-size:13px">${t('noData')}</div>
-    </div>`;
-  _c.querySelector('#rec-add').onclick = () => openModal();
-  renderCards();
+export function render(ct,us){
+  _c=ct;_u=us;_data=[];_q='';
+  paint();loadData();
+  return()=>{if(_unsub)_unsub();};
 }
 
-async function loadData() {
-  try {
-    const { fsGetAll } = await import('./firestore.js');
-    const all = await fsGetAll('recintos');
-    const r = _u.recinto || '';
-    _data = (_u.rol === 'admin' || _u.rol === 'superadmin') ? all : all.filter(d => d.id === r);
-    renderCards();
-  } catch (e) { console.warn('recintos load:', e); }
-}
+async function loadData(){try{const{fsListen}=await import('./firestore.js');if(_unsub)_unsub();_unsub=await fsListen('recintos',docs=>{_data=docs;applyF();rc();});}catch(e){}}
+function applyF(){let it=[..._data];if(_q){const q=_q.toLowerCase();it=it.filter(d=>`${d.nombre||''} ${d.ciudad||''} ${d.pais||''}`.toLowerCase().includes(q));}it.sort((a,b)=>{const r=String(a[_sortCol]??'').localeCompare(String(b[_sortCol]??''));return _sortDir==='asc'?r:-r;});_data=it;}
 
-function renderCards() {
-  const grid = _c.querySelector('#rec-grid'), em = _c.querySelector('#rec-em');
-  if (!grid) return;
-  if (!_data.length) { grid.innerHTML = ''; if (em) em.style.display = 'block'; return; }
-  if (em) em.style.display = 'none';
-  const dk = _u.tema === 'dark';
-  grid.innerHTML = _data.map(d => `
-    <div style="background:${dk ? '#1e293b' : '#fff'};border:1px solid ${dk ? '#334155' : '#e2e8f0'};border-radius:10px;padding:16px">
-      <div style="font-size:14px;font-weight:700;margin-bottom:4px">${safeHtml(d.nombre || d.id)}</div>
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px">${safeHtml(d.ciudad || '—')}</div>
-      <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">Halls: ${safeHtml((d.halls || []).join(', ') || '—')}</div>
-      <div style="font-size:11px;color:#94a3b8;margin-bottom:8px">Puertas: ${safeHtml((d.puertas || []).join(', ') || '—')}</div>
-      <div style="display:flex;gap:6px">
-        <button onclick="window._beuEditRec('${d.id}')" style="padding:4px 10px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">${t('edit')}</button>
-        <button onclick="window._beuDelRec('${d.id}')" style="padding:4px 10px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">${t('delete')}</button>
-      </div>
-    </div>`).join('');
-}
-
-function openModal(editId = null) {
-  const dk = _u.tema === 'dark', r = editId ? _data.find(d => d.id === editId) : {};
-  const old = document.getElementById('beu-rec-modal'); if (old) old.remove();
-  const m = document.createElement('div'); m.id = 'beu-rec-modal';
-  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8000;display:flex;align-items:center;justify-content:center;padding:16px';
-  m.innerHTML = `<div style="background:${dk ? '#1e293b' : '#fff'};border-radius:14px;padding:20px;max-width:420px;width:100%;color:inherit">
-    <div style="font-size:15px;font-weight:700;margin-bottom:16px">${editId ? t('edit') : t('add')} Recinto</div>
-    <div style="display:grid;gap:10px">
-      <div><label style="font-size:10px;font-weight:600;color:#64748b">Nombre</label><input data-f="nombre" value="${safeHtml(r.nombre || '')}" style="width:100%;padding:8px;border:1px solid ${dk ? '#475569' : '#e2e8f0'};border-radius:6px;font-size:12px;background:${dk ? '#0f172a' : '#f8fafc'};color:inherit"></div>
-      <div><label style="font-size:10px;font-weight:600;color:#64748b">Ciudad</label><input data-f="ciudad" value="${safeHtml(r.ciudad || '')}" style="width:100%;padding:8px;border:1px solid ${dk ? '#475569' : '#e2e8f0'};border-radius:6px;font-size:12px;background:${dk ? '#0f172a' : '#f8fafc'};color:inherit"></div>
-      <div><label style="font-size:10px;font-weight:600;color:#64748b">Halls (separados por coma)</label><input data-f="halls" value="${safeHtml((r.halls || []).join(', '))}" style="width:100%;padding:8px;border:1px solid ${dk ? '#475569' : '#e2e8f0'};border-radius:6px;font-size:12px;background:${dk ? '#0f172a' : '#f8fafc'};color:inherit"></div>
-      <div><label style="font-size:10px;font-weight:600;color:#64748b">Puertas (separadas por coma)</label><input data-f="puertas" value="${safeHtml((r.puertas || []).join(', '))}" style="width:100%;padding:8px;border:1px solid ${dk ? '#475569' : '#e2e8f0'};border-radius:6px;font-size:12px;background:${dk ? '#0f172a' : '#f8fafc'};color:inherit"></div>
+function paint(){
+  const c=C(),p=_u.permisos||{},isSA=_u.rol==='superadmin'||_u.rol==='supervisor';
+  _c.innerHTML=`<div style="max-width:1200px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="font-size:22px;font-weight:700;color:${c.text}">🏟 Recintos</div>
+      <span style="flex:1"></span>
+      ${isSA?`<button id="_addR" style="padding:8px 18px;background:${c.green};color:#fff;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">+ Nuevo recinto</button>`:''}
     </div>
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
-      <button id="rcn" style="padding:8px 16px;border:1px solid ${dk ? '#475569' : '#e2e8f0'};border-radius:8px;background:none;cursor:pointer;font-size:12px;color:inherit">${t('cancel')}</button>
-      <button id="rcs" style="padding:8px 16px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">${t('save')}</button>
-    </div></div>`;
-  m.querySelector('#rcn').onclick = () => m.remove(); m.onclick = e => { if (e.target === m) m.remove(); };
-  m.querySelector('#rcs').onclick = async () => {
-    const fd = { modificado: nowLocal() };
-    m.querySelectorAll('[data-f]').forEach(el => {
-      if (el.dataset.f === 'halls' || el.dataset.f === 'puertas') fd[el.dataset.f] = el.value.split(',').map(s => s.trim()).filter(Boolean);
-      else fd[el.dataset.f] = el.value || '';
-    });
-    try {
-      if (editId) { const { fsUpdate } = await import('./firestore.js'); await fsUpdate(`recintos/${editId}`, fd); }
-      else { const { fsAdd } = await import('./firestore.js'); await fsAdd('recintos', fd); }
-      toast(t('save') + ' ✓', '#10b981'); m.remove(); loadData();
-    } catch (e) { toast(t('error'), '#ef4444'); }
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
+      <div style="max-width:240px;min-width:120px;display:flex;align-items:center;background:${c.bg2};border:1px solid ${c.border};border-radius:20px;padding:4px 10px;gap:6px"><span style="opacity:.5">🔍</span><input id="_rq" type="search" placeholder="Buscar recinto..." value="${safeHtml(_q)}" style="border:none;background:transparent;flex:1;font-size:12px;outline:none;color:${c.text};font-family:inherit"></div>
+      <span style="font-size:10px;color:${c.t3}">${_data.length} recintos</span>
+    </div>
+    <div id="_rbody"></div>
+  </div>`;
+  const qi=_c.querySelector('#_rq');if(qi)qi.oninput=()=>{_q=qi.value.trim();applyF();rc();};
+  const add=_c.querySelector('#_addR');if(add)add.onclick=()=>openModal();
+  rc();
+}
+
+function rc(){
+  const b=_c.querySelector('#_rbody');if(!b)return;
+  const c=C(),isSA=_u.rol==='superadmin'||_u.rol==='supervisor';
+  if(!_data.length){b.innerHTML=`<div style="text-align:center;padding:48px;color:#94a3b8"><div style="font-size:36px">🏟</div><div style="font-weight:600;margin-top:6px">Sin recintos</div></div>`;return;}
+  b.innerHTML=`<div style="display:grid;gap:12px">${_data.map(r=>`<div style="background:${c.card};border:1px solid ${c.border};border-radius:12px;padding:16px">
+    <div style="display:flex;align-items:flex-start;gap:12px">
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:700;color:${c.text};margin-bottom:4px">${safeHtml(r.nombre||'Sin nombre')}</div>
+        <div style="font-size:12px;color:${c.t3};margin-bottom:8px">${safeHtml(r.ciudad||'')}${r.ciudad&&r.pais?' · ':''}${safeHtml(r.pais||'')}</div>
+        ${(r.halls||[]).length?`<div style="margin-bottom:6px"><span style="font-size:10px;font-weight:700;color:${c.t3};text-transform:uppercase">Halls:</span> <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px">${r.halls.map(h=>`<span style="background:${c.bll};color:${c.blue};font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px;border:1px solid ${c.border}">${h}</span>`).join('')}</div></div>`:''}
+        ${(r.puertas||[]).length?`<div style="font-size:11px;color:${c.t3}">🚪 ${r.puertas.map(p=>safeHtml(p.nombre||p)).join(', ')}</div>`:''}
+        ${r.atencion?.tel?`<div style="font-size:11px;color:${c.t3};margin-top:3px">📞 ${safeHtml(r.atencion.tel)}</div>`:''}
+      </div>
+      ${isSA?`<div style="display:flex;gap:4px">
+        <button style="font-size:11px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:6px;padding:4px 8px;cursor:pointer" onclick="window._recEdit('${r.id}')">✏️</button>
+        <button style="font-size:11px;background:#fef2f2;color:${c.red};border:1px solid #fecaca;border-radius:6px;padding:4px 8px;cursor:pointer" onclick="window._recDel('${r.id}')">🗑</button>
+      </div>`:''}
+    </div>
+  </div>`).join('')}</div>`;
+}
+
+function openModal(editId=null){
+  const c=C(),old=document.getElementById('_mRec');if(old)old.remove();
+  const r=editId?_data.find(d=>d.id===editId):{};
+  let halls=[...(r.halls||[])],puertas=[...(r.puertas||[])];
+  const m=document.createElement('div');m.id='_mRec';
+  m.style.cssText='position:fixed;inset:0;background:rgba(15,20,35,.4);backdrop-filter:blur(5px);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px';
+  const is=`width:100%;padding:8px 11px;border:1px solid ${c.border};border-radius:9px;font-size:13px;background:${c.card};color:${c.text};font-family:inherit;outline:none`;
+  m.innerHTML=`<div style="background:${c.card};border-radius:20px;border:1px solid ${c.border};width:100%;max-width:600px;max-height:92vh;overflow-y:auto;color:${c.text}">
+    <div style="display:flex;justify-content:space-between;padding:18px 22px 12px;border-bottom:1px solid ${c.border}"><div style="font-size:18px;font-weight:700">${editId?'✏️ Editar':'+ Nuevo'} Recinto</div><button style="padding:5px 12px;background:${c.bg2};color:${c.t3};border:1px solid ${c.border};border-radius:8px;font-size:12px;cursor:pointer" onclick="this.closest('#_mRec').remove()">✕</button></div>
+    <div style="padding:16px 22px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:${c.t3}">Nombre *</label><input id="_rNom" value="${safeHtml(r.nombre||'')}" placeholder="FIRA BARCELONA" style="${is}"></div>
+        <div><label style="font-size:11px;font-weight:600;color:${c.t3}">Ciudad</label><input id="_rCiu" value="${safeHtml(r.ciudad||'')}" placeholder="Barcelona" style="${is}"></div>
+        <div><label style="font-size:11px;font-weight:600;color:${c.t3}">País</label><input id="_rPais" value="${safeHtml(r.pais||'')}" placeholder="España" style="${is}"></div>
+      </div>
+      <div style="margin-bottom:14px;padding:12px;background:${c.bg2};border:1px solid ${c.border};border-radius:10px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:${c.blue};margin-bottom:8px">🏭 Halls</div>
+        <div style="display:flex;gap:4px;margin-bottom:8px"><input id="_rHall" placeholder="Ej: 2A, 3B, CS..." style="${is};flex:1"><button id="_addH" style="padding:6px 14px;background:${c.blue};color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer">+ Hall</button></div>
+        <div id="_rHalls" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+      </div>
+      <div style="margin-bottom:14px;padding:12px;background:${c.bg2};border:1px solid ${c.border};border-radius:10px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:${c.blue};margin-bottom:8px">🚪 Puertas</div>
+        <div style="display:flex;gap:4px;margin-bottom:8px"><input id="_rPuN" placeholder="Nombre puerta" style="${is};flex:1"><input id="_rPuD" placeholder="Dirección" style="${is};flex:1"><button id="_addP" style="padding:6px 14px;background:${c.blue};color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer">+</button></div>
+        <div id="_rPuertas"></div>
+      </div>
+      <div style="padding:12px;background:${c.bg2};border:1px solid ${c.border};border-radius:10px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:${c.blue};margin-bottom:8px">📞 Atención</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label style="font-size:11px;font-weight:600;color:${c.t3}">Teléfono</label><input id="_rTel" value="${safeHtml(r.atencion?.tel||'')}" style="${is}"></div>
+          <div><label style="font-size:11px;font-weight:600;color:${c.t3}">Email</label><input id="_rEmail" value="${safeHtml(r.atencion?.email||'')}" style="${is}"></div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 22px 18px;border-top:1px solid ${c.border}"><button style="padding:9px 18px;background:${c.bg2};color:${c.t3};border:1px solid ${c.border};border-radius:10px;font-size:12px;cursor:pointer" onclick="this.closest('#_mRec').remove()">Cancelar</button><button id="_svR" style="padding:9px 22px;background:${c.blue};color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer">${editId?'Guardar':'Crear'}</button></div></div>`;
+  m.onclick=e=>{if(e.target===m)m.remove();};
+  const renderH=()=>{m.querySelector('#_rHalls').innerHTML=halls.map((h,i)=>`<span style="background:${c.bll};color:${c.blue};font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:4px">${h}<span style="cursor:pointer;opacity:.5" onclick="this.dispatchEvent(new CustomEvent('rmh',{bubbles:true,detail:${i}}))">✕</span></span>`).join('');};
+  const renderP=()=>{m.querySelector('#_rPuertas').innerHTML=puertas.map((p,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 0"><span style="font-size:12px">🚪 ${safeHtml(p.nombre||p)}</span><span style="font-size:10px;color:${c.t3}">${safeHtml(p.dir||'')}</span><span style="cursor:pointer;opacity:.4;font-size:11px" onclick="this.dispatchEvent(new CustomEvent('rmp',{bubbles:true,detail:${i}}))">✕</span></div>`).join('');};
+  renderH();renderP();
+  m.querySelector('#_addH').onclick=()=>{const v=m.querySelector('#_rHall').value.trim();if(v){halls.push(v);m.querySelector('#_rHall').value='';renderH();}};
+  m.querySelector('#_addP').onclick=()=>{const n=m.querySelector('#_rPuN').value.trim(),d=m.querySelector('#_rPuD').value.trim();if(n){puertas.push({nombre:n,dir:d});m.querySelector('#_rPuN').value='';m.querySelector('#_rPuD').value='';renderP();}};
+  m.addEventListener('rmh',e=>{halls.splice(e.detail,1);renderH();});
+  m.addEventListener('rmp',e=>{puertas.splice(e.detail,1);renderP();});
+  m.querySelector('#_svR').onclick=async()=>{
+    const fd={nombre:m.querySelector('#_rNom').value.trim(),ciudad:m.querySelector('#_rCiu').value.trim(),pais:m.querySelector('#_rPais').value.trim(),halls,puertas,atencion:{tel:m.querySelector('#_rTel').value.trim(),email:m.querySelector('#_rEmail').value.trim()},modificado:nowLocal()};
+    if(!fd.nombre){toast('Nombre requerido','#ef4444');return;}
+    try{if(editId){const{fsUpdate}=await import('./firestore.js');await fsUpdate(`recintos/${editId}`,fd);}else{const{fsAdd}=await import('./firestore.js');await fsAdd('recintos',fd);}toast('✅ Recinto guardado','#10b981');m.remove();}catch(e){toast('❌ Error','#ef4444');}
   };
   document.body.appendChild(m);
 }
 
-window._beuEditRec = id => openModal(id);
-window._beuDelRec = async id => { if (!confirm(t('confirm') + '?')) return; try { const { fsDel } = await import('./firestore.js'); await fsDel(`recintos/${id}`); _data = _data.filter(d => d.id !== id); renderCards(); toast(t('delete') + ' ✓', '#f59e0b'); } catch (e) { toast(t('error'), '#ef4444'); } };
+window._recEdit=(id)=>openModal(id);
+window._recDel=async(id)=>{if(!confirm('¿Eliminar recinto?'))return;try{const{fsDel}=await import('./firestore.js');await fsDel(`recintos/${id}`);toast('🗑','#f59e0b');}catch(e){}};

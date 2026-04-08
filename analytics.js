@@ -1,210 +1,120 @@
 // ═══════════════════════════════════════════════════════════
-// BeUnifyT v8 — analytics.js — Análisis visual
-// Fuentes: ref, ingresos, agenda, conductores
+// BeUnifyT v8 — analytics.js — Análisis tipo Tableau simplificado
+// KPIs, gráficos SVG barras/donut, filtros fuente/fecha, export Excel
+// Lee datos de: ingresos2, ingresos, movimientos, agenda, conductores
 // ═══════════════════════════════════════════════════════════
-
 import { AppState } from './state.js';
-import { tr, trFree } from './langs.js';
-import { safeHtml, toast, todayISO } from './utils.js';
+import { safeHtml, toast, nowLocal } from './utils.js';
+import { getCurrentTheme, getThemeColors } from './themes.js';
+import { crossRead } from './field-engine.js';
 
-let _c, _u, _datos = {};
+let _c,_u,_source='all',_chart='resumen',_dateFrom='',_dateTo='',_allData=[];
+const C=()=>{const t=getThemeColors(getCurrentTheme());return{bg:t.bg,card:t.card,bg2:t.inp||t.bg,border:t.border,text:t.text,t3:t.t3,blue:t.acc,bll:t.accBg,green:t.green||'#0d9f6e',red:t.red||'#dc2626',amber:t.amber||'#d97706',purple:t.purple||'#7c3aed'};};
 
-export function render(c, u) {
-  _c = c; _u = u; _datos = {};
-  paint();
-  loadAll();
-  return () => {};
+export function render(ct,us){_c=ct;_u=us;_allData=[];loadAll().then(()=>paint());return()=>{};}
+
+async function loadAll(){
+  const[ing,ref,emb,ag,cd]=await Promise.all([crossRead('ingresos2'),crossRead('ingresos'),crossRead('movimientos'),crossRead('agenda'),crossRead('conductores')]);
+  _allData={all:[...ing,...ref,...emb,...ag],ref,ing,emb,ag,cd};
 }
 
-function t(k) { return trFree('analytics', k) || trFree('shell', k) || k; }
+function getData(){
+  let d=_allData[_source]||_allData.all||[];
+  if(_dateFrom)d=d.filter(i=>(i.fecha||i.entrada||'')>=_dateFrom);
+  if(_dateTo)d=d.filter(i=>(i.fecha||i.entrada||'').slice(0,10)<=_dateTo);
+  return d;
+}
 
-function paint() {
-  const dk = _u.tema === 'dark', bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
+function paint(){
+  const c=C(),data=getData(),today=new Date().toISOString().slice(0,10);
+  const enRecinto=data.filter(i=>i.estado==='EN_RECINTO'||(!i.salida&&i.entrada)).length;
+  const hoy=data.filter(i=>(i.fecha||i.entrada||'').startsWith(today)).length;
+  const total=data.length;
+  const conSalida=data.filter(i=>i.salida||i.estado==='SALIDA').length;
 
-  _c.innerHTML = `
-    <div style="max-width:1100px;margin:0 auto">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
-        <select id="an-source" style="padding:8px;border:1px solid ${bd};border-radius:8px;font-size:12px;background:${bg};color:inherit">
-          <option value="all">${t('all')}</option>
-          <option value="ingresos">Ingresos</option>
-          <option value="referencias">Referencias</option>
-          <option value="agenda">Agenda</option>
-          <option value="conductores">Conductores</option>
-        </select>
-        <input id="an-from" type="date" style="padding:8px;border:1px solid ${bd};border-radius:8px;font-size:12px;background:${bg};color:inherit">
-        <input id="an-to" type="date" value="${todayISO()}" style="padding:8px;border:1px solid ${bd};border-radius:8px;font-size:12px;background:${bg};color:inherit">
-        <button id="an-refresh" style="padding:8px 14px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">${t('filter')}</button>
-        <button id="an-export" style="padding:8px 14px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">${t('export')}</button>
+  _c.innerHTML=`<div style="max-width:1200px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="font-size:22px;font-weight:700;color:${c.text}">📈 Análisis</div>
+      <span style="flex:1"></span>
+      <button onclick="window._anlExport()" style="padding:6px 14px;background:${c.bg2};color:${c.t3};border:1px solid ${c.border};border-radius:8px;font-size:11px;cursor:pointer">⬇ Excel</button>
+    </div>
+    <!-- Filtros -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+      ${['all','ref','ing','emb','ag','cd'].map(s=>`<button class="_sf" data-s="${s}" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:${_source===s?'700':'500'};cursor:pointer;border:1.5px solid ${_source===s?c.blue:c.border};background:${_source===s?c.bll:c.bg2};color:${_source===s?c.blue:c.t3}">${{all:'Todos',ref:'Referencia',ing:'Ingresos',emb:'Embalaje',ag:'Agenda',cd:'Conductores'}[s]}</button>`).join('')}
+      <input type="date" value="${_dateFrom}" style="border:1px solid ${c.border};border-radius:20px;padding:4px 8px;font-size:11px;background:${c.bg2};outline:none;color:${c.t3}" onchange="window._anlDateFrom(this.value)">
+      <input type="date" value="${_dateTo}" style="border:1px solid ${c.border};border-radius:20px;padding:4px 8px;font-size:11px;background:${c.bg2};outline:none;color:${c.t3}" onchange="window._anlDateTo(this.value)">
+      <span style="font-size:10px;color:${c.t3}">${total} registros</span>
+    </div>
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px">
+      ${_kpi('En recinto',enRecinto,c.green,c)}
+      ${_kpi('Hoy',hoy,c.blue,c)}
+      ${_kpi('Total',total,c.purple,c)}
+      ${_kpi('Con salida',conSalida,c.amber,c)}
+      ${_kpi('Conductores',(_allData.cd||[]).length,'#6366f1',c)}
+    </div>
+    <!-- Charts -->
+    <div style="display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap">
+      ${['resumen','hora','hall','empresa','tipo','estado'].map(ch=>`<button class="_ch" data-ch="${ch}" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:${_chart===ch?'700':'500'};cursor:pointer;border:1.5px solid ${_chart===ch?c.blue:c.border};background:${_chart===ch?c.bll:c.bg2};color:${_chart===ch?c.blue:c.t3}">${{resumen:'📊 Tendencia',hora:'🕐 Por hora',hall:'🏭 Por hall',empresa:'🏢 Top empresas',tipo:'🚛 Tipo vehículo',estado:'📋 Estados'}[ch]}</button>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
+      <div style="background:${c.card};border:1px solid ${c.border};border-radius:12px;padding:16px;min-height:300px">
+        <div id="_chartMain"></div>
       </div>
-
-      <!-- CHARTS GRID -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div style="background:${bg};border:1px solid ${bd};border-radius:10px;padding:16px">
-          <div style="font-size:12px;font-weight:700;margin-bottom:10px">Tendencia diaria</div>
-          <canvas id="chart-trend" height="200"></canvas>
-        </div>
-        <div style="background:${bg};border:1px solid ${bd};border-radius:10px;padding:16px">
-          <div style="font-size:12px;font-weight:700;margin-bottom:10px">Por hora</div>
-          <canvas id="chart-hour" height="200"></canvas>
-        </div>
-        <div style="background:${bg};border:1px solid ${bd};border-radius:10px;padding:16px">
-          <div style="font-size:12px;font-weight:700;margin-bottom:10px">Top empresas</div>
-          <div id="chart-empresas" style="font-size:12px"></div>
-        </div>
-        <div style="background:${bg};border:1px solid ${bd};border-radius:10px;padding:16px">
-          <div style="font-size:12px;font-weight:700;margin-bottom:10px">Por hall</div>
-          <div id="chart-halls" style="font-size:12px"></div>
-        </div>
+      <div style="background:${c.card};border:1px solid ${c.border};border-radius:12px;padding:16px">
+        <div id="_chartSide"></div>
       </div>
-
-      <!-- RESUMEN -->
-      <div style="margin-top:16px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
-        <div id="an-total" style="background:${bg};border:1px solid ${bd};border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:24px;font-weight:800">—</div>
-          <div style="font-size:11px;color:#64748b">Total registros</div>
-        </div>
-        <div id="an-recinto" style="background:${bg};border:1px solid ${bd};border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:24px;font-weight:800">—</div>
-          <div style="font-size:11px;color:#64748b">En recinto</div>
-        </div>
-        <div id="an-salidas" style="background:${bg};border:1px solid ${bd};border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:24px;font-weight:800">—</div>
-          <div style="font-size:11px;color:#64748b">Salidas</div>
-        </div>
-        <div id="an-empresas" style="background:${bg};border:1px solid ${bd};border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:24px;font-weight:800">—</div>
-          <div style="font-size:11px;color:#64748b">Empresas</div>
-        </div>
-      </div>
-    </div>`;
-
-  _c.querySelector('#an-refresh').onclick = () => loadAll();
-  _c.querySelector('#an-export').onclick = () => exportAnalytics();
+    </div>
+  </div>`;
+  _c.querySelectorAll('._sf').forEach(b=>b.onclick=()=>{_source=b.dataset.s;paint();});
+  _c.querySelectorAll('._ch').forEach(b=>b.onclick=()=>{_chart=b.dataset.ch;paint();});
+  renderCharts(data,c);
 }
 
-async function loadAll() {
-  try {
-    const { fsGetAll } = await import('./firestore.js');
-    const r = _u.recinto || '';
-    const [ing, refs, ag, cond] = await Promise.all([
-      fsGetAll('accesos').then(d => r ? d.filter(x => x.recinto === r) : d),
-      fsGetAll('ingresos').then(d => r ? d.filter(x => x.recinto === r) : d),
-      fsGetAll('agenda').then(d => r ? d.filter(x => x.recinto === r) : d),
-      fsGetAll('conductores').then(d => r ? d.filter(x => x.recinto === r) : d),
-    ]);
-    _datos = { ingresos: ing, referencias: refs, agenda: ag, conductores: cond };
-    renderCharts();
-  } catch (e) { console.warn('analytics load:', e); }
+function _kpi(label,val,color,c){return`<div style="background:${c.card};border:1px solid ${c.border};border-radius:12px;padding:14px;text-align:center"><div style="font-size:28px;font-weight:800;color:${color}">${val}</div><div style="font-size:11px;color:${c.t3};margin-top:2px">${label}</div></div>`;}
+
+function renderCharts(data,c){
+  const main=_c.querySelector('#_chartMain'),side=_c.querySelector('#_chartSide');
+  if(!main||!side)return;
+  const count=(arr,key)=>{const m={};arr.forEach(i=>{const v=i[key];if(v)m[v]=(m[v]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
+  const timeHist=()=>{const m={};data.forEach(i=>{const d=(i.fecha||i.entrada||'').slice(0,10);if(d)m[d]=(m[d]||0)+1;});return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0]));};
+  const hourHist=()=>{const m={};for(let h=0;h<24;h++)m[String(h).padStart(2,'0')]=0;data.forEach(i=>{const t=(i.fecha||i.entrada||'').slice(11,13);if(t)m[t]=(m[t]||0)+1;});return Object.entries(m);};
+
+  let mainHTML='',sideHTML='';
+  if(_chart==='resumen'){const th=timeHist();mainHTML=_barChart(th,'Registros por día',c);sideHTML=_donut(count(data,'estado').slice(0,6),'Estados',c);}
+  else if(_chart==='hora'){mainHTML=_barChart(hourHist(),'Distribución por hora',c);sideHTML=_donut(count(data,'tipoVehiculo').slice(0,6),'Tipo vehículo',c);}
+  else if(_chart==='hall'){const h=count(data,'hall').slice(0,12);mainHTML=_barChart(h,'Por Hall',c);sideHTML=_donut(h.slice(0,6),'Halls',c);}
+  else if(_chart==='empresa'){const e=count(data,'empresa').slice(0,15);mainHTML=_barChart(e,'Top empresas',c);sideHTML=`<div style="font-size:12px;font-weight:700;margin-bottom:8px">🏢 Ranking</div>${e.map((x,i)=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;border-bottom:1px solid ${c.border}"><span>${i+1}. ${safeHtml(x[0])}</span><b>${x[1]}</b></div>`).join('')}`;}
+  else if(_chart==='tipo'){mainHTML=_barChart(count(data,'tipoVehiculo'),'Tipo vehículo',c);sideHTML=_donut(count(data,'tipoCarga').slice(0,6),'Tipo carga',c);}
+  else if(_chart==='estado'){mainHTML=_barChart(count(data,'estado'),'Estados',c);sideHTML=_donut(count(data,'estado'),'Estados',c);}
+  main.innerHTML=mainHTML;side.innerHTML=sideHTML;
 }
 
-function renderCharts() {
-  const all = [...(_datos.ingresos || []), ...(_datos.referencias || [])];
-
-  // Resumen
-  const total = all.length;
-  const enRecinto = all.filter(d => d.estado === 'EN_RECINTO').length;
-  const salidas = all.filter(d => d.estado === 'SALIDA').length;
-  const empresasSet = new Set(all.map(d => d.empresa).filter(Boolean));
-
-  setVal('an-total', total);
-  setVal('an-recinto', enRecinto);
-  setVal('an-salidas', salidas);
-  setVal('an-empresas', empresasSet.size);
-
-  // Top empresas
-  const empCount = {};
-  all.forEach(d => { if (d.empresa) empCount[d.empresa] = (empCount[d.empresa] || 0) + 1; });
-  const topEmps = Object.entries(empCount).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const empEl = _c.querySelector('#chart-empresas');
-  if (empEl) {
-    empEl.innerHTML = topEmps.length
-      ? topEmps.map(([name, count]) => {
-          const pct = Math.round((count / total) * 100);
-          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <div style="flex:1;font-size:11px">${safeHtml(name)}</div>
-            <div style="width:100px;height:14px;background:#f1f5f9;border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:#3b82f6;border-radius:4px"></div></div>
-            <div style="font-size:10px;font-weight:700;width:30px;text-align:right">${count}</div>
-          </div>`;
-        }).join('')
-      : '<span style="color:#94a3b8">Sin datos</span>';
-  }
-
-  // Por hall
-  const hallCount = {};
-  all.forEach(d => { if (d.hall) hallCount[d.hall] = (hallCount[d.hall] || 0) + 1; });
-  const hallsEl = _c.querySelector('#chart-halls');
-  if (hallsEl) {
-    const topHalls = Object.entries(hallCount).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    hallsEl.innerHTML = topHalls.length
-      ? topHalls.map(([name, count]) => {
-          const pct = Math.round((count / total) * 100);
-          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <div style="flex:1;font-size:11px">${safeHtml(name)}</div>
-            <div style="width:100px;height:14px;background:#f1f5f9;border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:#10b981;border-radius:4px"></div></div>
-            <div style="font-size:10px;font-weight:700;width:30px;text-align:right">${count}</div>
-          </div>`;
-        }).join('')
-      : '<span style="color:#94a3b8">Sin datos</span>';
-  }
-
-  // Tendencia y hora: barras simples con CSS (sin librería externa)
-  renderTrend(all);
-  renderHourDist(all);
+function _barChart(entries,title,c){
+  if(!entries.length)return`<div style="text-align:center;padding:40px;color:${c.t3}">Sin datos</div>`;
+  const max=Math.max(...entries.map(e=>e[1]),1);
+  const colors=[c.blue,c.green,c.purple,c.amber,c.red,'#6366f1','#ec4899','#14b8a6'];
+  return`<div style="font-size:12px;font-weight:700;margin-bottom:12px">${title}</div>
+    <svg viewBox="0 0 ${Math.max(entries.length*40,200)} 180" style="width:100%;height:220px">
+      ${entries.map((e,i)=>{const h=Math.max((e[1]/max)*150,2);const x=i*40+10;const col=colors[i%colors.length];
+        return`<rect x="${x}" y="${160-h}" width="28" height="${h}" rx="4" fill="${col}" opacity=".85"/>
+          <text x="${x+14}" y="${172}" text-anchor="middle" font-size="8" fill="${c.t3}">${e[0].length>6?e[0].slice(0,6)+'…':e[0]}</text>
+          <text x="${x+14}" y="${155-h}" text-anchor="middle" font-size="9" font-weight="700" fill="${c.text}">${e[1]}</text>`;
+      }).join('')}
+    </svg>`;
 }
 
-function renderTrend(data) {
-  const canvas = _c.querySelector('#chart-trend');
-  if (!canvas) return;
-  const days = {};
-  data.forEach(d => { const day = (d.fecha || '').slice(0, 10); if (day) days[day] = (days[day] || 0) + 1; });
-  const sorted = Object.entries(days).sort((a, b) => a[0].localeCompare(b[0])).slice(-7);
-  const max = Math.max(...sorted.map(s => s[1]), 1);
-  canvas.outerHTML = `<div style="display:flex;align-items:flex-end;gap:4px;height:160px">${sorted.map(([day, count]) =>
-    `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
-      <div style="font-size:10px;font-weight:700;margin-bottom:2px">${count}</div>
-      <div style="width:100%;background:#3b82f6;border-radius:4px 4px 0 0;height:${(count/max)*120}px;min-height:2px"></div>
-      <div style="font-size:9px;color:#94a3b8;margin-top:2px">${day.slice(5)}</div>
-    </div>`
-  ).join('')}</div>`;
+function _donut(entries,title,c){
+  if(!entries.length)return`<div style="text-align:center;padding:20px;color:${c.t3}">Sin datos</div>`;
+  const total=entries.reduce((s,e)=>s+e[1],0);
+  const colors=[c.blue,c.green,c.purple,c.amber,c.red,'#6366f1'];
+  let offset=0;
+  const slices=entries.map((e,i)=>{const pct=e[1]/total;const dash=pct*251.2;const gap=251.2-dash;const s=`<circle cx="50" cy="50" r="40" fill="none" stroke="${colors[i%colors.length]}" stroke-width="16" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${-offset}" opacity=".85"/>`;offset+=dash;return s;});
+  return`<div style="font-size:12px;font-weight:700;margin-bottom:8px">${title}</div>
+    <svg viewBox="0 0 100 100" style="width:140px;height:140px;margin:0 auto;display:block">${slices.join('')}<text x="50" y="53" text-anchor="middle" font-size="14" font-weight="800" fill="${c.text}">${total}</text></svg>
+    <div style="margin-top:8px">${entries.map((e,i)=>`<div style="display:flex;align-items:center;gap:6px;font-size:10px;padding:2px 0"><span style="width:8px;height:8px;border-radius:50%;background:${colors[i%colors.length]};flex-shrink:0"></span><span style="flex:1">${safeHtml(e[0]||'—')}</span><b>${e[1]}</b><span style="color:${c.t3}">${Math.round(e[1]/total*100)}%</span></div>`).join('')}</div>`;
 }
 
-function renderHourDist(data) {
-  const canvas = _c.querySelector('#chart-hour');
-  if (!canvas) return;
-  const hours = Array(24).fill(0);
-  data.forEach(d => {
-    const h = parseInt((d.fecha || '').slice(11, 13));
-    if (!isNaN(h)) hours[h]++;
-  });
-  const max = Math.max(...hours, 1);
-  const active = hours.map((v, i) => [i, v]).filter(([, v]) => v > 0);
-  canvas.outerHTML = `<div style="display:flex;align-items:flex-end;gap:2px;height:160px">${(active.length ? active : [[0,0]]).map(([h, count]) =>
-    `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
-      <div style="font-size:9px;font-weight:700;margin-bottom:1px">${count||''}</div>
-      <div style="width:100%;background:#f59e0b;border-radius:3px 3px 0 0;height:${(count/max)*120}px;min-height:2px"></div>
-      <div style="font-size:8px;color:#94a3b8;margin-top:1px">${h}h</div>
-    </div>`
-  ).join('')}</div>`;
-}
-
-function setVal(id, val) {
-  const el = _c.querySelector(`#${id}`);
-  if (el) el.querySelector('div').textContent = val;
-}
-
-async function exportAnalytics() {
-  try {
-    toast(t('loading'), '#3b82f6');
-    const XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs');
-    const all = [...(_datos.ingresos || []), ...(_datos.referencias || [])];
-    const ws = XLSX.utils.json_to_sheet(all.map(d => ({
-      Matricula: d.matricula, Empresa: d.empresa, Hall: d.hall, Fecha: d.fecha, Estado: d.estado
-    })));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, t('title'));
-    XLSX.writeFile(wb, `Analytics_${todayISO()}.xlsx`);
-    toast(t('export') + ' ✓', '#10b981');
-  } catch (e) { toast(t('error'), '#ef4444'); }
-}
-
-function t(k) { return trFree('analytics', k) || trFree('shell', k) || k; }
+window._anlDateFrom=(v)=>{_dateFrom=v;paint();};
+window._anlDateTo=(v)=>{_dateTo=v;paint();};
+window._anlExport=async()=>{try{toast('⬇','#2c5ee8');const X=await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs');const d=getData();const ws=X.utils.json_to_sheet(d.map(r=>({Matrícula:r.matricula||r.codigo||'',Nombre:r.nombre||r.titulo||'',Empresa:r.empresa||'',Hall:r.hall||'',Estado:r.estado||'',Fecha:r.fecha||r.entrada||''})));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Analytics');X.writeFile(wb,`analytics_${new Date().toISOString().slice(0,10)}.xlsx`);toast('✅','#10b981');}catch(e){toast('❌','#ef4444');}};
