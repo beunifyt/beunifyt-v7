@@ -85,7 +85,7 @@ const FIELD_LABELS = {
 const THEMES = {
   classic: { id:'classic', label:'Clásico',       icon:'📄', desc:'El diseño original' },
   dark:    { id:'dark',    label:'Dark Studio',    icon:'🌙', desc:'Oscuro profesional' },
-  warm:    { id:'warm',    label:'Warm Editorial', icon:'☀️', desc:'Cálido y limpio' },
+  warm:    { id:'warm',    label:'Warm Editorial', icon:'🌿', desc:'Cálido y limpio' },
   glass:   { id:'glass',   label:'Modern Glass',   icon:'💎', desc:'Moderno con propiedades' },
 };
 let _currentTheme = 'classic';
