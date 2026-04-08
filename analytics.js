@@ -1,120 +1,191 @@
-// ═══════════════════════════════════════════════════════════
-// BeUnifyT v8 — analytics.js — Análisis tipo Tableau simplificado
-// KPIs, gráficos SVG barras/donut, filtros fuente/fecha, export Excel
-// Lee datos de: ingresos2, ingresos, movimientos, agenda, conductores
-// ═══════════════════════════════════════════════════════════
-import { AppState } from './state.js';
-import { safeHtml, toast, nowLocal } from './utils.js';
-import { getCurrentTheme, getThemeColors } from './themes.js';
-import { crossRead } from './field-engine.js';
+// BeUnifyT v8 — tabs/analytics.js — Análisis
+import { DB, iF, SID, registerFn, callFn, agF } from '../core/context.js';
+import { esc, fmt, hBadge, sBadge, sAgBadge, cBadge, thSort, getSort, sortArr, telLink, debounceSearch, getRecintoHalls, getActiveEvent, getTabEvent, diffMins, diffClass, diffLabel, addH, tr, TV, PP, SCFG, CCFG, LANGS_UI } from '../core/shared.js';
+import { isSA, isSup, canEdit, canAdd, canDel, canExport, canImport, canClean, canStatus, canCampos } from '../auth.js';
+import { saveDB, marcarAgLlegado, marcarAgSalida, vaciarTab } from '../core/db.js';
+import { toast, uid, nowLocal } from '../utils.js';
+import { renderCamposSubtab } from '../core/fields.js';
 
-let _c,_u,_source='all',_chart='resumen',_dateFrom='',_dateTo='',_allData=[];
-const C=()=>{const t=getThemeColors(getCurrentTheme());return{bg:t.bg,card:t.card,bg2:t.inp||t.bg,border:t.border,text:t.text,t3:t.t3,blue:t.acc,bll:t.accBg,green:t.green||'#0d9f6e',red:t.red||'#dc2626',amber:t.amber||'#d97706',purple:t.purple||'#7c3aed'};};
+if (!window._anlState) window._anlState = { source:'all', chart:'resumen', dateFrom:'', dateTo:'' };
 
-export function render(ct,us){_c=ct;_u=us;_allData=[];loadAll().then(()=>paint());return()=>{};}
+export function renderAnalytics() {
+  const el = document.getElementById('tabContent'); if (!el) return;
+  const S = window._anlState;
+  const today = new Date().toISOString().slice(0, 10);
 
-async function loadAll(){
-  const[ing,ref,emb,ag,cd]=await Promise.all([crossRead('ingresos2'),crossRead('ingresos'),crossRead('movimientos'),crossRead('agenda'),crossRead('conductores')]);
-  _allData={all:[...ing,...ref,...emb,...ag],ref,ing,emb,ag,cd};
-}
+  // Data sources
+  const sources = {
+    all:       [...DB.ingresos, ...DB.ingresos2, ...(DB.movimientos||[]), ...(DB.agenda||[])],
+    ref:       DB.ingresos,
+    ing:       DB.ingresos2,
+    flota:     DB.movimientos || [],
+    agenda:    DB.agenda || [],
+    conductores: DB.conductores || [],
+  };
+  let data = sources[S.source] || sources.all;
 
-function getData(){
-  let d=_allData[_source]||_allData.all||[];
-  if(_dateFrom)d=d.filter(i=>(i.fecha||i.entrada||'')>=_dateFrom);
-  if(_dateTo)d=d.filter(i=>(i.fecha||i.entrada||'').slice(0,10)<=_dateTo);
-  return d;
-}
+  // Date filter
+  if (S.dateFrom) data = data.filter(i => (i.entrada||i.ts||'') >= S.dateFrom);
+  if (S.dateTo)   data = data.filter(i => (i.entrada||i.ts||'') <= S.dateTo+'T23:59');
 
-function paint(){
-  const c=C(),data=getData(),today=new Date().toISOString().slice(0,10);
-  const enRecinto=data.filter(i=>i.estado==='EN_RECINTO'||(!i.salida&&i.entrada)).length;
-  const hoy=data.filter(i=>(i.fecha||i.entrada||'').startsWith(today)).length;
-  const total=data.length;
-  const conSalida=data.filter(i=>i.salida||i.estado==='SALIDA').length;
+  // Auto-export warning
+  const autoExportWarn = data.length > 500 ? `<div style="background:var(--all);border:1px solid #fde68a;border-radius:var(--r);padding:6px 10px;font-size:11px;font-weight:600;color:#92400e;margin-bottom:8px">⚠️ +500 registros (${data.length}). <button class="btn btn-gh btn-xs" onclick="window._op._anlExport()">⬇ Auto-exportar Excel con fecha</button></div>` : '';
 
-  _c.innerHTML=`<div style="max-width:1200px;margin:0 auto">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-      <div style="font-size:22px;font-weight:700;color:${c.text}">📈 Análisis</div>
-      <span style="flex:1"></span>
-      <button onclick="window._anlExport()" style="padding:6px 14px;background:${c.bg2};color:${c.t3};border:1px solid ${c.border};border-radius:8px;font-size:11px;cursor:pointer">⬇ Excel</button>
-    </div>
-    <!-- Filtros -->
-    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
-      ${['all','ref','ing','emb','ag','cd'].map(s=>`<button class="_sf" data-s="${s}" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:${_source===s?'700':'500'};cursor:pointer;border:1.5px solid ${_source===s?c.blue:c.border};background:${_source===s?c.bll:c.bg2};color:${_source===s?c.blue:c.t3}">${{all:'Todos',ref:'Referencia',ing:'Ingresos',emb:'Embalaje',ag:'Agenda',cd:'Conductores'}[s]}</button>`).join('')}
-      <input type="date" value="${_dateFrom}" style="border:1px solid ${c.border};border-radius:20px;padding:4px 8px;font-size:11px;background:${c.bg2};outline:none;color:${c.t3}" onchange="window._anlDateFrom(this.value)">
-      <input type="date" value="${_dateTo}" style="border:1px solid ${c.border};border-radius:20px;padding:4px 8px;font-size:11px;background:${c.bg2};outline:none;color:${c.t3}" onchange="window._anlDateTo(this.value)">
-      <span style="font-size:10px;color:${c.t3}">${total} registros</span>
-    </div>
-    <!-- KPIs -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px">
-      ${_kpi('En recinto',enRecinto,c.green,c)}
-      ${_kpi('Hoy',hoy,c.blue,c)}
-      ${_kpi('Total',total,c.purple,c)}
-      ${_kpi('Con salida',conSalida,c.amber,c)}
-      ${_kpi('Conductores',(_allData.cd||[]).length,'#6366f1',c)}
-    </div>
-    <!-- Charts -->
-    <div style="display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap">
-      ${['resumen','hora','hall','empresa','tipo','estado'].map(ch=>`<button class="_ch" data-ch="${ch}" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:${_chart===ch?'700':'500'};cursor:pointer;border:1.5px solid ${_chart===ch?c.blue:c.border};background:${_chart===ch?c.bll:c.bg2};color:${_chart===ch?c.blue:c.t3}">${{resumen:'📊 Tendencia',hora:'🕐 Por hora',hall:'🏭 Por hall',empresa:'🏢 Top empresas',tipo:'🚛 Tipo vehículo',estado:'📋 Estados'}[ch]}</button>`).join('')}
-    </div>
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
-      <div style="background:${c.card};border:1px solid ${c.border};border-radius:12px;padding:16px;min-height:300px">
-        <div id="_chartMain"></div>
-      </div>
-      <div style="background:${c.card};border:1px solid ${c.border};border-radius:12px;padding:16px">
-        <div id="_chartSide"></div>
-      </div>
-    </div>
+  // KPIs
+  const enRecinto = data.filter(i => !i.salida && i.entrada).length;
+  const hoy = data.filter(i => (i.entrada||'').startsWith(today)).length;
+  const conSalida = data.filter(i => i.salida).length;
+
+  // Breakdowns
+  const _count = (arr, key) => {
+    const m = {}; arr.forEach(i => { const v = i[key]; if (v) m[v] = (m[v]||0)+1; });
+    return Object.entries(m).sort((a,b) => b[1]-a[1]);
+  };
+  const _timeHist = (arr) => {
+    const m = {}; arr.forEach(i => { const d = (i.entrada||i.ts||'').slice(0,10); if (d) m[d]=(m[d]||0)+1; });
+    return Object.entries(m).sort((a,b) => a[0].localeCompare(b[0]));
+  };
+  const _hourHist = (arr) => {
+    const m = {}; for(let h=0;h<24;h++) m[String(h).padStart(2,'0')]=0;
+    arr.forEach(i => { const t = (i.entrada||i.ts||'').slice(11,13); if (t) m[t]=(m[t]||0)+1; });
+    return Object.entries(m).sort((a,b) => a[0].localeCompare(b[0]));
+  };
+  const _avgTime = (arr) => {
+    const times = arr.filter(i=>i.entrada&&i.salida).map(i => new Date(i.salida)-new Date(i.entrada));
+    return times.length ? Math.round(times.reduce((a,b)=>a+b,0)/times.length/60000) : 0;
+  };
+
+  const byEmpresa = _count(data, 'empresa').slice(0,10);
+  const byTipo    = _count(data, 'tipoVehiculo').slice(0,8);
+  const byHall    = _count(data, 'hall').slice(0,8);
+  const byStatus  = _count(data, 'status').slice(0,6);
+  const byDay     = _timeHist(data);
+  const byHour    = _hourHist(data);
+  const avgMin    = _avgTime(data);
+
+  const barMax = (arr) => arr.length ? arr[0][1] : 1;
+  const barChart = (arr, color, title) => {
+    if (!arr.length) return '<div style="padding:8px;text-align:center;font-size:11px;color:var(--text3)">Sin datos</div>';
+    const mx = barMax(arr);
+    return arr.map(([k,v]) => `<div class="bar-row"><span style="font-size:10px;min-width:70px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)">${esc(k)}</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(v/mx*100)}%;background:${color}"></div></div><span class="bar-val">${v}</span></div>`).join('');
+  };
+  const sparkLine = (arr, color) => {
+    if (arr.length < 2) return '';
+    const mx = Math.max(...arr.map(x=>x[1]),1);
+    const w = 280, h = 60, step = w/(arr.length-1);
+    const pts = arr.map((x,i) => `${i*step},${h-Math.round(x[1]/mx*(h-6))}`).join(' ');
+    return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px;display:block"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/></svg>`;
+  };
+
+  // Source selector + date filters
+  let h = `${autoExportWarn}
+  <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+    <span style="font-size:10px;font-weight:700;color:var(--text3)">FUENTE:</span>
+    ${[['all','🌐 Todo'],['ref','🔖 Ref'],['ing','🚛 Ing'],['flota','📦 Embalaje'],['agenda','📅 Agenda'],['conductores','👤 Cond.']].map(([v,l])=>`<button class="btn btn-xs ${S.source===v?'btn-p':'btn-gh'}" onclick="window._anlState.source='${v}';window._op.renderAnalytics()">${l}</button>`).join('')}
+    <span style="flex:1"></span>
+    <input type="date" value="${S.dateFrom||''}" oninput="window._anlState.dateFrom=this.value;window._op.renderAnalytics()" title="Desde">
+    <input type="date" value="${S.dateTo||''}" oninput="window._anlState.dateTo=this.value;window._op.renderAnalytics()" title="Hasta">
+    ${S.dateFrom||S.dateTo?`<button class="btn btn-xs btn-gh" onclick="window._anlState.dateFrom='';window._anlState.dateTo='';window._op.renderAnalytics()">✕</button>`:''}
+    <button class="btn btn-gh btn-sm" onclick="window._op._anlExport()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Excel</button>
+    <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none;border-radius:20px" onclick="window._op._anlSmartInsights()">🧠 Insights</button>
   </div>`;
-  _c.querySelectorAll('._sf').forEach(b=>b.onclick=()=>{_source=b.dataset.s;paint();});
-  _c.querySelectorAll('._ch').forEach(b=>b.onclick=()=>{_chart=b.dataset.ch;paint();});
-  renderCharts(data,c);
+
+  // KPI cards
+  h += `<div class="sg sg4" style="margin-bottom:10px">
+    <div class="card" style="text-align:center;padding:12px"><div class="stat-n" style="font-size:24px;color:var(--blue)">${data.length}</div><div class="stat-l">Total registros</div></div>
+    <div class="card" style="text-align:center;padding:12px"><div class="stat-n" style="font-size:24px;color:var(--green)">${enRecinto}</div><div class="stat-l">En recinto</div></div>
+    <div class="card" style="text-align:center;padding:12px"><div class="stat-n" style="font-size:24px;color:var(--teal)">${hoy}</div><div class="stat-l">Hoy</div></div>
+    <div class="card" style="text-align:center;padding:12px"><div class="stat-n" style="font-size:24px;color:var(--amber)">${avgMin}<span style="font-size:11px">m</span></div><div class="stat-l">Prom. estancia</div></div>
+  </div>`;
+
+  // Charts grid — Row 1: Trend + Hour distribution
+  h += `<div class="sg sg2" style="margin-bottom:10px">
+    <div class="card"><div style="font-weight:800;font-size:12px;margin-bottom:6px">📈 Tendencia diaria</div>${sparkLine(byDay,'#3b82f6')}<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:2px"><span>${byDay[0]?byDay[0][0]:''}</span><span>${byDay.length?byDay[byDay.length-1][0]:''}</span></div></div>
+    <div class="card"><div style="font-weight:800;font-size:12px;margin-bottom:6px">🕐 Distribución por hora</div>${barChart(byHour.filter(x=>x[1]>0),'#6366f1','')}</div>
+  </div>`;
+
+  // Row 2: Donut vehicle type + Top empresas + Halls
+  const donutSVG = (items, colors) => {
+    if (!items.length) return '<div style="padding:16px;text-align:center;font-size:11px;color:var(--text3)">Sin datos</div>';
+    const total = items.reduce((a,x) => a+x[1], 0);
+    const cx=60, cy=60, r=50, r2=30;
+    let angle = -90;
+    let paths = '';
+    const clrs = colors || ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#64748b'];
+    items.forEach(([k,v], i) => {
+      const pct = v/total;
+      const a1 = angle * Math.PI/180;
+      angle += pct * 360;
+      const a2 = angle * Math.PI/180;
+      const large = pct > 0.5 ? 1 : 0;
+      const x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+      const x2=cx+r*Math.cos(a2), y2=cy+r*Math.sin(a2);
+      const x3=cx+r2*Math.cos(a2), y3=cy+r2*Math.sin(a2);
+      const x4=cx+r2*Math.cos(a1), y4=cy+r2*Math.sin(a1);
+      paths += '<path d="M'+x1+','+y1+' A'+r+','+r+' 0 '+large+' 1 '+x2+','+y2+' L'+x3+','+y3+' A'+r2+','+r2+' 0 '+large+' 0 '+x4+','+y4+' Z" fill="'+clrs[i%clrs.length]+'" opacity="0.85"/>';
+    });
+    const legend = items.slice(0,6).map(([k,v],i) => '<div style="display:flex;align-items:center;gap:4px;font-size:10px"><div style="width:8px;height:8px;border-radius:2px;background:'+clrs[i%clrs.length]+';flex-shrink:0"></div><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px">'+esc(k)+'</span><b>'+v+'</b></div>').join('');
+    return '<div style="display:flex;align-items:center;gap:12px"><svg viewBox="0 0 120 120" width="100" height="100">'+paths+'<text x="60" y="58" text-anchor="middle" font-size="16" font-weight="900" fill="var(--text)">'+total+'</text><text x="60" y="72" text-anchor="middle" font-size="8" fill="var(--text3)">total</text></svg><div style="display:flex;flex-direction:column;gap:3px;flex:1">'+legend+'</div></div>';
+  };
+
+  // Descarga breakdown
+  const descC = {mano:0, maquinaria:0, mixto:0};
+  data.forEach(i => { if(i.descargaTipo) descC[i.descargaTipo]=(descC[i.descargaTipo]||0)+1; });
+  const descTotal = Object.values(descC).reduce((a,b)=>a+b,0);
+
+  h += `<div class="sg sg3" style="margin-bottom:10px">
+    <div class="card"><div style="font-weight:800;font-size:12px;margin-bottom:8px">🚗 Tipo vehículo</div>${donutSVG(byTipo)}</div>
+    <div class="card"><div style="font-weight:800;font-size:12px;margin-bottom:6px">🏢 Top empresas</div>${barChart(byEmpresa,'var(--teal)','')}</div>
+    <div class="card"><div style="font-weight:800;font-size:12px;margin-bottom:6px">🏟 Por Hall</div>${barChart(byHall,'var(--amber)','')}</div>
+  </div>`;
+
+  // Row 3: Descarga + Status + Ref vs Ing
+  const refData = (sources.ref||[]).filter(i => (!S.dateFrom||(i.entrada||'')>=S.dateFrom) && (!S.dateTo||(i.entrada||'')<=S.dateTo+'T23:59'));
+  const ingData = (sources.ing||[]).filter(i => (!S.dateFrom||(i.entrada||'')>=S.dateFrom) && (!S.dateTo||(i.entrada||'')<=S.dateTo+'T23:59'));
+  const totalRef=refData.length, totalIng=ingData.length, totalBoth=totalRef+totalIng;
+  const pctRef = totalBoth ? Math.round(totalRef/totalBoth*100) : 50;
+
+  h += `<div class="sg sg3">
+    <div class="card"><div style="font-weight:800;font-size:12px;margin-bottom:8px">📦 Tipo descarga</div>
+      ${descTotal ? `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <div style="text-align:center;background:var(--gll);border:1px solid #bbf7d0;border-radius:var(--r);padding:8px"><div style="font-size:20px;font-weight:900;color:var(--green)">${descC.mano||0}</div><div style="font-size:9px;font-weight:700;color:var(--text3)">MANUAL</div></div>
+        <div style="text-align:center;background:var(--bll);border:1px solid #bfdbfe;border-radius:var(--r);padding:8px"><div style="font-size:20px;font-weight:900;color:var(--blue)">${descC.maquinaria||0}</div><div style="font-size:9px;font-weight:700;color:var(--text3)">MAQUINARIA</div></div>
+        <div style="text-align:center;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px"><div style="font-size:20px;font-weight:900;color:var(--text3)">${descC.mixto||0}</div><div style="font-size:9px;font-weight:700;color:var(--text3)">MIXTO</div></div>
+      </div>` : '<div style="padding:12px;text-align:center;font-size:11px;color:var(--text3)">Sin datos</div>'}
+    </div>
+    <div class="card"><div style="font-weight:800;font-size:12px;margin-bottom:8px">🔄 Ref vs Ing</div>
+      <div style="height:14px;border-radius:7px;overflow:hidden;display:flex;margin-bottom:10px"><div style="background:var(--blue);width:${pctRef}%"></div><div style="background:var(--green);flex:1"></div></div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1;text-align:center;background:var(--bll);border-radius:var(--r);padding:8px"><div style="font-size:22px;font-weight:900;color:var(--blue)">${totalRef}</div><div style="font-size:9px;font-weight:700;color:var(--text3)">🔖 REF (${pctRef}%)</div></div>
+        <div style="flex:1;text-align:center;background:var(--gll);border-radius:var(--r);padding:8px"><div style="font-size:22px;font-weight:900;color:var(--green)">${totalIng}</div><div style="font-size:9px;font-weight:700;color:var(--text3)">🚛 ING (${100-pctRef}%)</div></div>
+      </div>
+    </div>
+    <div class="card"><div style="font-weight:800;font-size:12px;margin-bottom:6px">📊 Estado actual</div>${donutSVG([['En recinto',enRecinto],['Con salida',conSalida],['Hoy',hoy]].filter(x=>x[1]>0),['#10b981','#6366f1','#f59e0b'])}</div>
+  </div>`;
+
+  el.innerHTML = h;
 }
 
-function _kpi(label,val,color,c){return`<div style="background:${c.card};border:1px solid ${c.border};border-radius:12px;padding:14px;text-align:center"><div style="font-size:28px;font-weight:800;color:${color}">${val}</div><div style="font-size:11px;color:${c.t3};margin-top:2px">${label}</div></div>`;}
 
-function renderCharts(data,c){
-  const main=_c.querySelector('#_chartMain'),side=_c.querySelector('#_chartSide');
-  if(!main||!side)return;
-  const count=(arr,key)=>{const m={};arr.forEach(i=>{const v=i[key];if(v)m[v]=(m[v]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
-  const timeHist=()=>{const m={};data.forEach(i=>{const d=(i.fecha||i.entrada||'').slice(0,10);if(d)m[d]=(m[d]||0)+1;});return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0]));};
-  const hourHist=()=>{const m={};for(let h=0;h<24;h++)m[String(h).padStart(2,'0')]=0;data.forEach(i=>{const t=(i.fecha||i.entrada||'').slice(11,13);if(t)m[t]=(m[t]||0)+1;});return Object.entries(m);};
-
-  let mainHTML='',sideHTML='';
-  if(_chart==='resumen'){const th=timeHist();mainHTML=_barChart(th,'Registros por día',c);sideHTML=_donut(count(data,'estado').slice(0,6),'Estados',c);}
-  else if(_chart==='hora'){mainHTML=_barChart(hourHist(),'Distribución por hora',c);sideHTML=_donut(count(data,'tipoVehiculo').slice(0,6),'Tipo vehículo',c);}
-  else if(_chart==='hall'){const h=count(data,'hall').slice(0,12);mainHTML=_barChart(h,'Por Hall',c);sideHTML=_donut(h.slice(0,6),'Halls',c);}
-  else if(_chart==='empresa'){const e=count(data,'empresa').slice(0,15);mainHTML=_barChart(e,'Top empresas',c);sideHTML=`<div style="font-size:12px;font-weight:700;margin-bottom:8px">🏢 Ranking</div>${e.map((x,i)=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;border-bottom:1px solid ${c.border}"><span>${i+1}. ${safeHtml(x[0])}</span><b>${x[1]}</b></div>`).join('')}`;}
-  else if(_chart==='tipo'){mainHTML=_barChart(count(data,'tipoVehiculo'),'Tipo vehículo',c);sideHTML=_donut(count(data,'tipoCarga').slice(0,6),'Tipo carga',c);}
-  else if(_chart==='estado'){mainHTML=_barChart(count(data,'estado'),'Estados',c);sideHTML=_donut(count(data,'estado'),'Estados',c);}
-  main.innerHTML=mainHTML;side.innerHTML=sideHTML;
+function _anlExport() {
+  const S = window._anlState;
+  const sources = { all:[...DB.ingresos,...DB.ingresos2,...(DB.movimientos||[]),...(DB.agenda||[])], ref:DB.ingresos, ing:DB.ingresos2, flota:DB.movimientos||[], agenda:DB.agenda||[], conductores:DB.conductores||[] };
+  let data = sources[S.source] || sources.all;
+  if (S.dateFrom) data = data.filter(i => (i.entrada||i.ts||'') >= S.dateFrom);
+  if (S.dateTo)   data = data.filter(i => (i.entrada||i.ts||'') <= S.dateTo+'T23:59');
+  if (!data.length) { toast('Sin datos','var(--amber)'); return; }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'Analisis');
+  const fn = 'analisis_' + new Date().toISOString().slice(0,10) + '.xlsx';
+  XLSX.writeFile(wb, fn);
+  toast('✅ Exportado', 'var(--green)');
 }
 
-function _barChart(entries,title,c){
-  if(!entries.length)return`<div style="text-align:center;padding:40px;color:${c.t3}">Sin datos</div>`;
-  const max=Math.max(...entries.map(e=>e[1]),1);
-  const colors=[c.blue,c.green,c.purple,c.amber,c.red,'#6366f1','#ec4899','#14b8a6'];
-  return`<div style="font-size:12px;font-weight:700;margin-bottom:12px">${title}</div>
-    <svg viewBox="0 0 ${Math.max(entries.length*40,200)} 180" style="width:100%;height:220px">
-      ${entries.map((e,i)=>{const h=Math.max((e[1]/max)*150,2);const x=i*40+10;const col=colors[i%colors.length];
-        return`<rect x="${x}" y="${160-h}" width="28" height="${h}" rx="4" fill="${col}" opacity=".85"/>
-          <text x="${x+14}" y="${172}" text-anchor="middle" font-size="8" fill="${c.t3}">${e[0].length>6?e[0].slice(0,6)+'…':e[0]}</text>
-          <text x="${x+14}" y="${155-h}" text-anchor="middle" font-size="9" font-weight="700" fill="${c.text}">${e[1]}</text>`;
-      }).join('')}
-    </svg>`;
+function _anlSmartInsights() {
+  toast('🧠 Insights: ' + DB.ingresos.length + ' refs, ' + (DB.ingresos2||[]).length + ' ings, ' + (DB.movimientos||[]).length + ' mov', 'var(--blue)');
 }
 
-function _donut(entries,title,c){
-  if(!entries.length)return`<div style="text-align:center;padding:20px;color:${c.t3}">Sin datos</div>`;
-  const total=entries.reduce((s,e)=>s+e[1],0);
-  const colors=[c.blue,c.green,c.purple,c.amber,c.red,'#6366f1'];
-  let offset=0;
-  const slices=entries.map((e,i)=>{const pct=e[1]/total;const dash=pct*251.2;const gap=251.2-dash;const s=`<circle cx="50" cy="50" r="40" fill="none" stroke="${colors[i%colors.length]}" stroke-width="16" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${-offset}" opacity=".85"/>`;offset+=dash;return s;});
-  return`<div style="font-size:12px;font-weight:700;margin-bottom:8px">${title}</div>
-    <svg viewBox="0 0 100 100" style="width:140px;height:140px;margin:0 auto;display:block">${slices.join('')}<text x="50" y="53" text-anchor="middle" font-size="14" font-weight="800" fill="${c.text}">${total}</text></svg>
-    <div style="margin-top:8px">${entries.map((e,i)=>`<div style="display:flex;align-items:center;gap:6px;font-size:10px;padding:2px 0"><span style="width:8px;height:8px;border-radius:50%;background:${colors[i%colors.length]};flex-shrink:0"></span><span style="flex:1">${safeHtml(e[0]||'—')}</span><b>${e[1]}</b><span style="color:${c.t3}">${Math.round(e[1]/total*100)}%</span></div>`).join('')}</div>`;
-}
-
-window._anlDateFrom=(v)=>{_dateFrom=v;paint();};
-window._anlDateTo=(v)=>{_dateTo=v;paint();};
-window._anlExport=async()=>{try{toast('⬇','#2c5ee8');const X=await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs');const d=getData();const ws=X.utils.json_to_sheet(d.map(r=>({Matrícula:r.matricula||r.codigo||'',Nombre:r.nombre||r.titulo||'',Empresa:r.empresa||'',Hall:r.hall||'',Estado:r.estado||'',Fecha:r.fecha||r.entrada||''})));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Analytics');X.writeFile(wb,`analytics_${new Date().toISOString().slice(0,10)}.xlsx`);toast('✅','#10b981');}catch(e){toast('❌','#ef4444');}};
+registerFn('renderAnalytics', renderAnalytics);
+registerFn('_anlExport', _anlExport);
+registerFn('_anlSmartInsights', _anlSmartInsights);
+window.renderAnalytics = renderAnalytics;

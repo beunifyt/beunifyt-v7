@@ -33,9 +33,6 @@ const SVG = {
   mensajes:'<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
   usuarios:'<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>',
   empresas:'<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
-  analytics2:'<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>',
-  analytics3:'<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9"/><path d="M21 3l-9 9"/><path d="M15 3h6v6"/></svg>',
-  analytics4:'<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M12 2a4 4 0 014 4c0 1.1-.9 2-2 2h-4a2 2 0 01-2-2 4 4 0 014-4z"/><path d="M8 8v8a4 4 0 008 0V8"/><line x1="6" y1="12" x2="18" y2="12"/></svg>',
 };
 
 // ─── TAB DEFINITIONS ────────────────────────────────────────────────
@@ -57,13 +54,10 @@ export const TAB_DEFS = [
   {id:'usuarios',label:'Usuarios',ico:SVG.usuarios},
   {id:'empresas',label:'Empresas',ico:SVG.empresas},
   {id:'migracion',label:'Migración',ico:'<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'},
-  {id:'analytics2',label:'Event Tracker',ico:SVG.analytics2},
-  {id:'analytics3',label:'Precision',ico:SVG.analytics3},
-  {id:'analytics4',label:'AI Intel',ico:SVG.analytics4},
 ];
 
 export const DEFAULT_TABS = {
-  superadmin:['dash','ingresos','ingresos2','flota','conductores','agenda','analytics','analytics2','analytics3','analytics4','vehiculos','auditoria','papelera','impresion','recintos','eventos','mensajes','usuarios','empresas','migracion'],
+  superadmin:['dash','ingresos','ingresos2','flota','conductores','agenda','analytics','vehiculos','auditoria','papelera','impresion','recintos','eventos','mensajes','usuarios','empresas','migracion'],
   supervisor:['dash','ingresos','ingresos2','flota','conductores','agenda','analytics','vehiculos','auditoria','papelera','impresion','recintos','eventos','mensajes','usuarios'],
   controlador_rampa:['ingresos','ingresos2'],
   editor:['ingresos','ingresos2','conductores','agenda','impresion'],
@@ -224,7 +218,7 @@ export function goTab(tab) {
   const renderName = {
     dash:'renderDash', ingresos:'renderIngresos', ingresos2:'renderIngresos2',
     flota:'renderFlota', conductores:'renderConductores', agenda:'renderAgenda',
-    analytics:'renderAnalytics', analytics2:'renderAnalytics2', analytics3:'renderAnalytics3', analytics4:'renderAnalytics4', vehiculos:'renderVehiculos', auditoria:'renderAuditoria',
+    analytics:'renderAnalytics', vehiculos:'renderVehiculos', auditoria:'renderAuditoria',
     papelera:'renderPapelera', impresion:'renderImpresion', recintos:'renderRecintos',
     eventos:'renderEventosTab', mensajes:'renderMensajes', usuarios:'renderUsuarios',
     empresas:'renderEmpresasTab', migracion:'renderMigracion',
