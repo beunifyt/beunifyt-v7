@@ -6,7 +6,7 @@
 import { trFree, tr } from './langs.js';
 import { safeHtml, toast, nowLocal } from './utils.js';
 
-const ALL_TABS = ['dash','ingresos','ingresos2','flota','conductores','agenda','analytics','vehiculos','auditoria','recintos','usuarios','eventos','papelera','mensajes','impresion','empresas','migracion'];
+const ALL_TABS = ['dash','ingresos','ingresos2','flota','conductores','agenda','analytics','analytics2','analytics3','analytics4','vehiculos','auditoria','recintos','usuarios','eventos','papelera','mensajes','impresion','empresas','migracion'];
 const ALL_PERMS = ['canAdd','canEdit','canDel','canExport','canImport','canPrint','canStatus','canSpecial','canCampos'];
 
 let _c, _u, _data = [];
