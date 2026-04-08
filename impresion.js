@@ -224,7 +224,7 @@ function _getThemeCSS(th) {
     glass:{lb:"#fff",lw:"260px",lbd:"none",lp:"8px",rb:"#e8ecf1",tb:"#fff",tbd:"1px solid #e2e8f0",tp:"6px 10px",sc:"#94a3b8",sb:"#fff",cb:"#e8ecf1",cp:"12px",pb:"#fff",pbd:"none",ps:"0 4px 20px rgba(0,0,0,.08)",bb:"#fff",cb1:"rgba(102,126,234,.4)",cb2:"rgba(102,126,234,.06)",cs:"#667eea",css:"0 0 0 2px rgba(102,126,234,.2)",gh:"#667eea",gv:"#e53e3e",sb1:"1px solid #e2e8f0",sr:"8px",shb:"#f8fafc",shc:"#94a3b8",fb:"none",fbg:"transparent",fr:"6px",fc:"#475569",to:"#e2e8f0",tn:"#667eea",sc1:"#e2e8f0",sh:"20px",mb:"#fff",mr:"14px",ms:"0 12px 40px rgba(0,0,0,.12)",mc:"#334155",bx:"#impToolbar .btn{background:#fff;border:1.5px solid #e2e8f0;color:#64748b;border-radius:6px;min-width:28px;min-height:28px}#impToolbar .btn:hover{border-color:#94a3b8;background:#f8fafc}#impToolbar .btn-p{background:#667eea!important;color:#fff!important;border-color:#667eea!important;box-shadow:0 2px 6px rgba(102,126,234,.25)}#impLeft .btn{border:1.5px solid #e2e8f0;color:#64748b;border-radius:6px;background:#fff}#impLeft .btn:hover{border-color:#94a3b8}#impLeft .btn-p{background:#667eea!important;color:#fff!important;border-color:#667eea!important}"},
   };
   var t=D[th]||D.classic;
-  return "#impWrap{display:flex;height:calc(100vh - var(--hdr-h,90px));overflow:hidden}"
+  return "#impWrap{display:flex;height:100%;overflow:hidden}"
     +"#impLeft{width:"+t.lw+";min-width:"+t.lw+";flex-shrink:0;overflow-y:auto;background:"+t.lb+";padding:"+t.lp+";display:flex;flex-direction:column;gap:5px;border-right:"+t.lbd+"}"
     +"#impRight{flex:1;overflow:hidden;display:flex;flex-direction:column;background:"+t.rb+"}"
     +"#impToolbar{display:flex;align-items:center;gap:3px;padding:"+t.tp+";background:"+t.tb+";border-bottom:"+t.tbd+";flex-shrink:0;flex-wrap:wrap}"
@@ -286,8 +286,9 @@ function _renderShell(el) {
   el.innerHTML = `
 <style id="impThemeStyle">${_getThemeCSS(_currentTheme)}</style>
 
+<div id="impOuter" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
 ${_buildThemePicker()}
-<div id="impWrap">
+<div id="impWrap" style="flex:1;overflow:hidden">
   <!-- ══ PANEL IZQUIERDO ══ -->
   <div id="impLeft">
     <!-- Subtabs -->
@@ -474,6 +475,7 @@ ${_buildThemePicker()}
   </div>
 </div>
 
+</div>
 <!-- ═══ PRINT DIALOG ═══ -->
 <div id="impPrintModal" class="imp-modal-bg">
   <div class="imp-modal" style="min-width:380px">
