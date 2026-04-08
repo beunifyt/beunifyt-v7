@@ -1725,3 +1725,20 @@ export async function printEntry(entry, eventName, cfgOverride) {
   if (w) { w.document.write(html); w.document.close(); }
   else toast('Activa ventanas emergentes','var(--amber)');
 }
+
+// ── AUTO-INIT ────────────────────────────────────────────────────
+setTimeout(function() {
+  if (document.getElementById('impThemePicker')) return;
+  var tc = document.getElementById('tabContent');
+  if (!tc) return;
+  if (tc.textContent.indexOf('impresion') >= 0 || tc.textContent.indexOf('cargado') >= 0) {
+    tc.innerHTML = '<div id="impresionContainer" style="height:100%;display:flex;flex-direction:column"></div>';
+    initImpresion('impresionContainer');
+  }
+}, 300);
+
+// ── render() para operator.js v8 ─────────────────────────────────
+export function render(container, usuario) {
+  container.innerHTML = '<div id="impresionContainer" style="height:100%;display:flex;flex-direction:column"></div>';
+  initImpresion('impresionContainer');
+}
