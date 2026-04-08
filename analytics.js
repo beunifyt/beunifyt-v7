@@ -206,5 +206,3 @@ async function exportAnalytics() {
     toast(t('export') + ' ✓', '#10b981');
   } catch (e) { toast(t('error'), '#ef4444'); }
 }
-
-function t(k) { return trFree('analytics', k) || trFree('shell', k) || k; }
