@@ -18,8 +18,9 @@ const FIELD_DEFS={
     {id:'remolque',label:'Remolque',desc:'Matrícula del remolque',type:'text'},
     {id:'tipoVehiculo',label:'Tipo vehículo',desc:'T=Trailer, TH=Manual',type:'select',options:['','T - Trailer forklift','TH - Trailer manual','A - Furgoneta','B - Camión 4 ejes']},
     {id:'tipoCarga',label:'Tipo carga',desc:'Forklift/Manual',type:'select',options:['','Forklift','Manual','Mixto']},
-    {id:'posicion',label:'Posición',desc:'Posición en recinto',type:'text'},
+    {id:'pos',label:'Posición',desc:'Nº posición en recinto',type:'text'},
     {id:'llamador',label:'Llamador',desc:'Responsable llamada',type:'text'},
+    {id:'descargaTipo',label:'Descarga',desc:'Tipo de descarga',type:'select',options:['','Manual','Forklift','Grúa','Mixto']},
   ]},
   conductor:{icon:'👤',label:'Conductor',fields:[
     {id:'nombre',label:'Nombre',desc:'Nombre del conductor',type:'text'},
@@ -35,13 +36,13 @@ const FIELD_DEFS={
     {id:'stand',label:'Stand',desc:'Stand de entrega',type:'text'},
     {id:'montador',label:'Montador',desc:'Empresa montadora',type:'text'},
     {id:'expositor',label:'Expositor',desc:'Nombre del expositor',type:'text'},
-    {id:'puerta',label:'Puerta Hall',desc:'Puerta de acceso',type:'text'},
-    {id:'fechaIng',label:'Fecha',req:1,desc:'Fecha de ingreso',type:'date'},
-    {id:'horaIng',label:'Hora',desc:'Hora de ingreso',type:'time'},
+    {id:'puertaHall',label:'Puerta Hall',desc:'Puerta de acceso',type:'text'},
+    {id:'fecha',label:'Fecha',req:1,desc:'Fecha de ingreso',type:'date'},
+    {id:'hora',label:'Hora',desc:'Hora de ingreso',type:'time'},
     {id:'obs',label:'Notas',desc:'Observaciones',type:'text'},
   ]},
 };
-const ALL_COLS=[{id:'pos',label:'#',req:1},{id:'matricula',label:'Matrícula',req:1},{id:'remolque',label:'Remolque'},{id:'tipoCarga',label:'Carga'},{id:'referencia',label:'Ref.'},{id:'conductor',label:'Conductor'},{id:'empresa',label:'Empresa'},{id:'telefono',label:'Tel.'},{id:'hall',label:'Hall'},{id:'stand',label:'Stand'},{id:'estado',label:'Estado'},{id:'entrada',label:'Entrada'},{id:'acciones',label:'Acc.',req:1}];
+const ALL_COLS=[{id:'pos',label:'#',req:1},{id:'matricula',label:'Matrícula',req:1},{id:'remolque',label:'Remolque'},{id:'tipoVehiculo',label:'Tipo'},{id:'tipoCarga',label:'Carga'},{id:'llamador',label:'Llamador'},{id:'referencia',label:'Ref.'},{id:'conductor',label:'Conductor'},{id:'empresa',label:'Empresa'},{id:'telefono',label:'Tel.'},{id:'hall',label:'Hall'},{id:'stand',label:'Stand'},{id:'montador',label:'Montador'},{id:'expositor',label:'Expositor'},{id:'puertaHall',label:'Puerta'},{id:'estado',label:'Estado'},{id:'entrada',label:'Entrada'},{id:'acciones',label:'Acc.',req:1}];
 const ST={EN_RECINTO:'En recinto',EN_CAMINO:'En camino',ESPERA:'En espera',RAMPA:'Rampa',SALIDA:'Salida'};
 const ST_BG={EN_RECINTO:'#dcfce7;color:#15803d',EN_CAMINO:'#dbeafe;color:#1d4ed8',ESPERA:'#fef9c3;color:#a16207',RAMPA:'#ede9fe;color:#6d28d9',SALIDA:'#f1f5f9;color:#64748b'};
 function stP(s){return`<span style="display:inline-flex;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;background:${ST_BG[s]||'#f8fafc;color:#94a3b8'}">${ST[s]||s||'—'}</span>`;}
@@ -171,6 +172,11 @@ function cell(d,id,p,c){
       ${d.estado==='SALIDA'&&p.canEdit?`<button style="font-size:11px;background:#ecfdf5;color:${c.green};border:1px solid #a7f3d0;border-radius:6px;padding:3px 7px;cursor:pointer" onclick="window.${PFX}React('${d.id}')">↺</button>`:''}
       ${p.canDel?`<button style="font-size:11px;background:#fef2f2;color:${c.red};border:1px solid #fecaca;border-radius:6px;padding:3px 7px;cursor:pointer" onclick="window.${PFX}Del('${d.id}')">🗑</button>`:''}
     </div></td>`;
+    case'tipoVehiculo':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.tipoVehiculo||'–')}</td>`;
+    case'llamador':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.llamador||'–')}</td>`;
+    case'montador':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.montador||'–')}</td>`;
+    case'expositor':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.expositor||'–')}</td>`;
+    case'puertaHall':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.puertaHall||'–')}</td>`;
     default:return'<td>–</td>';
   }
 }
@@ -234,7 +240,9 @@ function openModal(editId=null){
     m.querySelectorAll('[data-f]').forEach(el=>{fd[el.dataset.f]=el.value||'';});
     if(!fd.matricula){toast('Matrícula requerida','#ef4444');return;}
     fd.matricula=normPlate(fd.matricula);
-    if(_posAuto&&!editId)fd.pos=nextPos(_data);
+    const dup=!editId&&_data.find(d=>normPlate(d.matricula)===fd.matricula&&d.estado!=='SALIDA');
+    if(dup&&!confirm(\`⚠️ Matrícula \${fd.matricula} ya está en recinto (Pos #\${dup.pos||'?'}). ¿Crear otro registro?\`))return;
+    if(!editId){if(fd.pos){fd.pos=parseInt(fd.pos)||nextPos(_data);}else if(_posAuto){fd.pos=nextPos(_data);}else{fd.pos=nextPos(_data);}}
     try{
       if(editId){const{fsUpdate}=await import('./firestore.js');await fsUpdate(`${COLL}/${editId}`,fd);_log('edit',fd.matricula,'Edición');}
       else{fd.fecha=fd.fecha||nowLocal();fd.estado='EN_RECINTO';fd.creadoPor=_u.uid;const{fsAdd}=await import('./firestore.js');await fsAdd(COLL,fd);_log('new',fd.matricula,'Nuevo ingreso');}
@@ -261,7 +269,7 @@ async function _log(a,mat,det){try{const{fsAdd}=await import('./firestore.js');a
 async function _sal(id){const d=_data.find(x=>x.id===id);if(!d)return;try{const{fsUpdate}=await import('./firestore.js');await fsUpdate(`${COLL}/${id}`,{estado:'SALIDA',salida:nowLocal(),modificado:nowLocal()});_log('salida',d.matricula,'Salida');toast('↩ Salida','#d97706');}catch(e){}}
 async function _react(id){const d=_data.find(x=>x.id===id);if(!d)return;try{const{fsUpdate}=await import('./firestore.js');await fsUpdate(`${COLL}/${id}`,{estado:'EN_RECINTO',salida:null,modificado:nowLocal()});_log('reactivar',d.matricula,'Reactivado');toast('↺','#0d9f6e');}catch(e){}}
 async function _del(id){if(!confirm('¿Eliminar?'))return;const d=_data.find(x=>x.id===id);try{const{fsDel}=await import('./firestore.js');await fsDel(`${COLL}/${id}`);if(d)_log('edit',d.matricula,'Eliminado');toast('🗑','#f59e0b');}catch(e){}}
-async function xls(){try{toast('⬇','#2c5ee8');const X=await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs');const ws=X.utils.json_to_sheet(_filtered.map(d=>({Pos:d.pos,Matrícula:d.matricula,Remolque:d.remolque,Tipo:d.tipoVehiculo,Llamador:d.llamador,Conductor:`${d.nombre||''} ${d.apellido||''}`.trim(),Empresa:d.empresa,Tel:d.telefono,Hall:d.hall,Stand:d.stand,Estado:ST[d.estado]||d.estado,Entrada:d.fecha})));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,TITLE);X.writeFile(wb,`${TITLE}_${new Date().toISOString().slice(0,10)}.xlsx`);toast('✅','#10b981');}catch(e){toast('❌','#ef4444');}}
+async function xls(){try{toast('⬇','#2c5ee8');const X=await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs');const ws=X.utils.json_to_sheet(_filtered.map(d=>({Pos:d.pos,Matrícula:d.matricula,Remolque:d.remolque,Tipo:d.tipoVehiculo,Carga:d.tipoCarga,Descarga:d.descargaTipo,Llamador:d.llamador,Referencia:d.referencia,Conductor:`${d.nombre||''} ${d.apellido||''}`.trim(),Empresa:d.empresa,Tel:d.telefono,Hall:d.hall,Stand:d.stand,Montador:d.montador,Expositor:d.expositor,Puerta:d.puertaHall,Estado:ST[d.estado]||d.estado,Entrada:d.fecha})));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,TITLE);X.writeFile(wb,`${TITLE}_${new Date().toISOString().slice(0,10)}.xlsx`);toast('✅','#10b981');}catch(e){toast('❌','#ef4444');}}
 
 // ═══ AUTOFILL — cross-read conductores ═══
 async function _doAutoFill(mat){

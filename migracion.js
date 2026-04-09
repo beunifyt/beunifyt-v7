@@ -5,14 +5,17 @@
 
 import { trFree } from './langs.js';
 import { toast, todayISO } from './utils.js';
+import { getCurrentTheme, getThemeColors } from './themes.js';
 
 let _c, _u;
 
+
+function _isDark(){try{return getThemeColors(getCurrentTheme()).group==='dark';}catch(e){return false;}}
 export function render(c, u) { _c = c; _u = u; paint(); return () => {}; }
 function t(k) { return trFree('migracion', k) || trFree('shell', k) || k; }
 
 function paint() {
-  const dk = _u.tema === 'dark', bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
+  const dk = _isDark(), bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
   _c.innerHTML = `
     <div style="max-width:600px;margin:0 auto">
       <div style="font-size:15px;font-weight:700;margin-bottom:16px">💾 Migración y Backup</div>

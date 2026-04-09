@@ -17,7 +17,7 @@ const FIELD_DEFS={
     {id:'matricula',label:'Matrícula',req:1,desc:'Placa del vehículo',type:'text'},
     {id:'remolque',label:'Remolque',desc:'Matrícula del remolque',type:'text'},
     {id:'tipoVehiculo',label:'Tipo vehículo',desc:'A=Furgoneta, B=Camión',type:'select',options:['','A - Furgoneta','B - Camión 4 ejes']},
-    {id:'posicion',label:'Posición',desc:'Posición en recinto',type:'text'},
+    {id:'pos',label:'Posición',desc:'Nº posición en recinto',type:'text'},
     {id:'llamador',label:'Llamador',desc:'Responsable llamada',type:'text'},
     {id:'logistica',label:'Logística',desc:'Empresa logística',type:'text'},
   ]},
@@ -33,8 +33,8 @@ const FIELD_DEFS={
     {id:'hall',label:'Hall',req:1,desc:'Hall de destino',type:'text'},
     {id:'stand',label:'Stand',desc:'Stand de entrega',type:'text'},
     {id:'expositor',label:'Expositor',desc:'Nombre del expositor',type:'text'},
-    {id:'fechaIng',label:'Fecha',req:1,desc:'Fecha de ingreso',type:'date'},
-    {id:'horaIng',label:'Hora',desc:'Hora de ingreso',type:'time'},
+    {id:'fecha',label:'Fecha',req:1,desc:'Fecha de ingreso',type:'date'},
+    {id:'hora',label:'Hora',desc:'Hora de ingreso',type:'time'},
     {id:'obs',label:'Notas',desc:'Observaciones',type:'text'},
   ]},
 };
@@ -176,6 +176,10 @@ function cell(d,id,p,c){
       ${d.estado==='SALIDA'&&p.canEdit?`<button style="font-size:11px;background:#ecfdf5;color:${c.green};border:1px solid #a7f3d0;border-radius:6px;padding:3px 7px;cursor:pointer" onclick="window.${PFX}React('${d.id}')">↺</button>`:''}
       ${p.canDel?`<button style="font-size:11px;background:#fef2f2;color:${c.red};border:1px solid #fecaca;border-radius:6px;padding:3px 7px;cursor:pointer" onclick="window.${PFX}Del('${d.id}')">🗑</button>`:''}
     </div></td>`;
+    case'tipoVehiculo':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.tipoVehiculo||'–')}</td>`;
+    case'llamador':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.llamador||'–')}</td>`;
+    case'logistica':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.logistica||'–')}</td>`;
+    case'expositor':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.expositor||'–')}</td>`;
     default:return'<td>–</td>';
   }
 }
@@ -239,7 +243,9 @@ function openModal(editId=null){
     m.querySelectorAll('[data-f]').forEach(el=>{fd[el.dataset.f]=el.value||'';});
     if(!fd.matricula){toast('Matrícula requerida','#ef4444');return;}
     fd.matricula=normPlate(fd.matricula);
-    if(_posAuto&&!editId)fd.pos=nextPos(_data);
+    const dup=!editId&&_data.find(d=>normPlate(d.matricula)===fd.matricula&&d.estado!=='SALIDA');
+    if(dup&&!confirm(\`⚠️ Matrícula \${fd.matricula} ya está en recinto (Pos #\${dup.pos||'?'}). ¿Crear otro registro?\`))return;
+    if(!editId){if(fd.pos){fd.pos=parseInt(fd.pos)||nextPos(_data);}else if(_posAuto){fd.pos=nextPos(_data);}else{fd.pos=nextPos(_data);}}
     try{
       if(editId){const{fsUpdate}=await import('./firestore.js');await fsUpdate(`${COLL}/${editId}`,fd);_log('edit',fd.matricula,'Edición');}
       else{fd.fecha=fd.fecha||nowLocal();fd.estado='EN_RECINTO';fd.creadoPor=_u.uid;const{fsAdd}=await import('./firestore.js');await fsAdd(COLL,fd);_log('new',fd.matricula,'Nuevo ingreso');}

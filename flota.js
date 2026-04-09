@@ -31,8 +31,8 @@ const FIELD_DEFS={
     {id:'empresa',label:'Empresa',desc:'Transportista',type:'text'},
     {id:'matricula',label:'Matrícula',desc:'Vehículo',type:'text'},
     {id:'nombre',label:'Conductor',desc:'Nombre conductor',type:'text'},
-    {id:'fechaIng',label:'Fecha',req:1,desc:'Fecha recepción',type:'date'},
-    {id:'horaIng',label:'Hora',desc:'Hora recepción',type:'time'},
+    {id:'fecha',label:'Fecha',req:1,desc:'Fecha recepción',type:'date'},
+    {id:'hora',label:'Hora',desc:'Hora recepción',type:'time'},
     {id:'obs',label:'Notas',desc:'Observaciones',type:'text'},
   ]},
 };
@@ -166,6 +166,11 @@ function cell(d,id,p,c){
       ${d.estado==='SALIDA'&&p.canEdit?`<button style="font-size:11px;background:#ecfdf5;color:${c.green};border:1px solid #a7f3d0;border-radius:6px;padding:3px 7px;cursor:pointer" onclick="window.${PFX}React('${d.id}')">↺</button>`:''}
       ${p.canDel?`<button style="font-size:11px;background:#fef2f2;color:${c.red};border:1px solid #fecaca;border-radius:6px;padding:3px 7px;cursor:pointer" onclick="window.${PFX}Del('${d.id}')">🗑</button>`:''}
     </div></td>`;
+    case'descripcion':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.descripcion||'–')}</td>`;
+    case'tipo':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.tipo||'–')}</td>`;
+    case'peso':return`<td style="padding:8px 12px;font-size:11px">${d.peso?d.peso+'kg':'–'}</td>`;
+    case'expositor':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.expositor||'–')}</td>`;
+    case'referencia':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.referencia||'–')}</td>`;
     default:return'<td>–</td>';
   }
 }
@@ -227,12 +232,13 @@ function openModal(editId=null){
   m.querySelector('#_sv').onclick=async()=>{
     const fd={recinto:_u.recinto||'',modificado:nowLocal(),modificadoPor:_u.uid};
     m.querySelectorAll('[data-f]').forEach(el=>{fd[el.dataset.f]=el.value||'';});
-    if(!fd.matricula){toast('Matrícula requerida','#ef4444');return;}
-    fd.matricula=normPlate(fd.matricula);
-    if(_posAuto&&!editId)fd.pos=nextPos(_data);
+    if(!fd.codigo){toast('Código requerido','#ef4444');return;}
+    const dup=!editId&&_data.find(d=>(d.codigo||'')===(fd.codigo||'')&&d.estado!=='DEVUELTO');
+    if(dup&&!confirm('⚠️ Código '+fd.codigo+' ya existe. ¿Duplicar?'))return;
+    if(!editId){if(fd.pos){fd.pos=parseInt(fd.pos)||nextPos(_data);}else{fd.pos=nextPos(_data);}}
     try{
-      if(editId){const{fsUpdate}=await import('./firestore.js');await fsUpdate(`${COLL}/${editId}`,fd);_log('edit',fd.matricula,'Edición');}
-      else{fd.fecha=fd.fecha||nowLocal();fd.estado='EN_RECINTO';fd.creadoPor=_u.uid;const{fsAdd}=await import('./firestore.js');await fsAdd(COLL,fd);_log('new',fd.matricula,'Nuevo ingreso');}
+      if(editId){const{fsUpdate}=await import('./firestore.js');await fsUpdate(`${COLL}/${editId}`,fd);_log('edit',fd.codigo,'Edición');}
+      else{fd.fecha=fd.fecha||nowLocal();fd.estado='RECIBIDO';fd.creadoPor=_u.uid;const{fsAdd}=await import('./firestore.js');await fsAdd(COLL,fd);_log('new',fd.codigo,'Nuevo paquete');}
       toast('✅ Guardado','#10b981');m.remove();
     }catch(e){toast('❌ Error','#ef4444');}
   };

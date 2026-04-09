@@ -5,7 +5,11 @@
 
 import { trFree } from './langs.js';
 import { safeHtml, toast } from './utils.js';
+import { getCurrentTheme, getThemeColors } from './themes.js';
 
+
+function _isDark(){try{return getThemeColors(getCurrentTheme()).group==='dark';}catch(e){return false;}}
+const C=()=>{try{const t=getThemeColors(getCurrentTheme());return{bg:t.bg,card:t.card,bg2:t.inp||t.bg,border:t.border,text:t.text,t3:t.t3,blue:t.acc,bll:t.accBg,green:t.green||'#0d9f6e',red:t.red||'#dc2626',amber:t.amber||'#d97706',purple:t.purple||'#7c3aed',inp:t.inp||t.bg};}catch(e){return{bg:'#fff',card:'#fff',bg2:'#f8fafc',border:'#e2e8f0',text:'#0f172a',t3:'#64748b',blue:'#2563eb',bll:'#eff6ff',green:'#0d9f6e',red:'#dc2626',amber:'#d97706',purple:'#7c3aed',inp:'#f8fafc'};}};
 let _c, _u, _data = [];
 
 export function render(c, u) {
@@ -15,7 +19,7 @@ export function render(c, u) {
 }
 
 function paint() {
-  const dk = _u.tema === 'dark', bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
+  const dk = _isDark(), bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
   _c.innerHTML = `
     <div style="max-width:900px;margin:0 auto">
       <div style="font-size:15px;font-weight:700;margin-bottom:12px">📂 Archivos</div>
@@ -48,7 +52,7 @@ function renderRows() {
   if (!tb) return;
   if (!_data.length) { tb.innerHTML = ''; if (em) em.style.display = 'block'; return; }
   if (em) em.style.display = 'none';
-  const dk = _u.tema === 'dark';
+  const dk = _isDark();
   tb.innerHTML = _data.map(d => `<tr style="border-top:1px solid ${dk ? '#334155' : '#f1f5f9'}">
     <td style="padding:8px 12px;font-weight:600">${safeHtml(d.nombre || '—')}</td>
     <td style="padding:8px 12px">${safeHtml(d.tipo || '—')}</td>

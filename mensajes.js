@@ -4,14 +4,18 @@
 
 import { trFree } from './langs.js';
 import { safeHtml, toast, nowLocal } from './utils.js';
+import { getCurrentTheme, getThemeColors } from './themes.js';
 
+
+function _isDark(){try{return getThemeColors(getCurrentTheme()).group==='dark';}catch(e){return false;}}
+const C=()=>{try{const t=getThemeColors(getCurrentTheme());return{bg:t.bg,card:t.card,bg2:t.inp||t.bg,border:t.border,text:t.text,t3:t.t3,blue:t.acc,bll:t.accBg,green:t.green||'#0d9f6e',red:t.red||'#dc2626',amber:t.amber||'#d97706',purple:t.purple||'#7c3aed',inp:t.inp||t.bg};}catch(e){return{bg:'#fff',card:'#fff',bg2:'#f8fafc',border:'#e2e8f0',text:'#0f172a',t3:'#64748b',blue:'#2563eb',bll:'#eff6ff',green:'#0d9f6e',red:'#dc2626',amber:'#d97706',purple:'#7c3aed',inp:'#f8fafc'};}};
 let _c, _u, _data = [], _unsub;
 
 export function render(c, u) { _c = c; _u = u; _data = []; paint(); loadData(); return () => { if (_unsub) _unsub(); }; }
 function t(k) { return trFree('mensajes', k) || trFree('shell', k) || k; }
 
 function paint() {
-  const dk = _u.tema === 'dark', bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
+  const dk = _isDark(), bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
   _c.innerHTML = `
     <div style="max-width:700px;margin:0 auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -38,7 +42,7 @@ function renderList() {
   if (!list) return;
   if (!_data.length) { list.innerHTML = ''; if (em) em.style.display = 'block'; return; }
   if (em) em.style.display = 'none';
-  const dk = _u.tema === 'dark';
+  const dk = _isDark();
   list.innerHTML = _data.map(d => {
     const urgent = d.urgencia === 'alta';
     return `<div style="background:${dk ? '#1e293b' : '#fff'};border:1px solid ${urgent ? '#ef4444' : (dk ? '#334155' : '#e2e8f0')};border-radius:10px;padding:12px;${d.leido ? 'opacity:0.6;' : ''}">
@@ -56,7 +60,7 @@ function renderList() {
 }
 
 function openModal() {
-  const dk = _u.tema === 'dark';
+  const dk = _isDark();
   const old = document.getElementById('beu-msg-modal'); if (old) old.remove();
   const m = document.createElement('div'); m.id = 'beu-msg-modal';
   m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8000;display:flex;align-items:center;justify-content:center;padding:16px';

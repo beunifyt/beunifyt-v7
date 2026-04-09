@@ -160,6 +160,11 @@ function cell(d,id,p,c){
       ${d.estado==='SALIDA'&&p.canEdit?`<button style="font-size:11px;background:#ecfdf5;color:${c.green};border:1px solid #a7f3d0;border-radius:6px;padding:3px 7px;cursor:pointer" onclick="window.${PFX}React('${d.id}')">↺</button>`:''}
       ${p.canDel?`<button style="font-size:11px;background:#fef2f2;color:${c.red};border:1px solid #fecaca;border-radius:6px;padding:3px 7px;cursor:pointer" onclick="window.${PFX}Del('${d.id}')">🗑</button>`:''}
     </div></td>`;
+    case'nacionalidad':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.nacionalidad||'–')}</td>`;
+    case'licencia':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.licencia||'–')}</td>`;
+    case'vehiculo':return`<td style="padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:10px">${safeHtml(d.vehiculo||'–')}</td>`;
+    case'email':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.email||'–')}</td>`;
+    case'idiomas':return`<td style="padding:8px 12px;font-size:11px">${safeHtml(d.idiomas||'–')}</td>`;
     default:return'<td>–</td>';
   }
 }
@@ -221,12 +226,13 @@ function openModal(editId=null){
   m.querySelector('#_sv').onclick=async()=>{
     const fd={recinto:_u.recinto||'',modificado:nowLocal(),modificadoPor:_u.uid};
     m.querySelectorAll('[data-f]').forEach(el=>{fd[el.dataset.f]=el.value||'';});
-    if(!fd.matricula){toast('Matrícula requerida','#ef4444');return;}
-    fd.matricula=normPlate(fd.matricula);
-    if(_posAuto&&!editId)fd.pos=nextPos(_data);
+    if(!fd.nombre){toast('Nombre requerido','#ef4444');return;}
+    const dup=!editId&&_data.find(d=>(d.nombre||'')===(fd.nombre||'')&&(d.apellido||'')===(fd.apellido||'')&&(d.empresa||'')===(fd.empresa||''));
+    if(dup&&!confirm('⚠️ '+fd.nombre+' '+(fd.apellido||'')+' ya existe. ¿Duplicar?'))return;
+    if(!editId){if(fd.pos){fd.pos=parseInt(fd.pos)||nextPos(_data);}else{fd.pos=nextPos(_data);}}
     try{
-      if(editId){const{fsUpdate}=await import('./firestore.js');await fsUpdate(`${COLL}/${editId}`,fd);_log('edit',fd.matricula,'Edición');}
-      else{fd.fecha=fd.fecha||nowLocal();fd.estado='EN_RECINTO';fd.creadoPor=_u.uid;const{fsAdd}=await import('./firestore.js');await fsAdd(COLL,fd);_log('new',fd.matricula,'Nuevo ingreso');}
+      if(editId){const{fsUpdate}=await import('./firestore.js');await fsUpdate(`${COLL}/${editId}`,fd);_log('edit',fd.nombre||fd.apellido,'Edición');}
+      else{fd.fecha=fd.fecha||nowLocal();fd.estado='ACTIVO';fd.creadoPor=_u.uid;const{fsAdd}=await import('./firestore.js');await fsAdd(COLL,fd);_log('new',fd.nombre||fd.apellido,'Nuevo conductor');}
       toast('✅ Guardado','#10b981');m.remove();
     }catch(e){toast('❌ Error','#ef4444');}
   };

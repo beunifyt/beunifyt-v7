@@ -3,9 +3,12 @@
 // ═══════════════════════════════════════════════════════════
 
 import { AppState } from './state.js';
-import { tr } from './langs.js';
+import { tr, trFree } from './langs.js';
 import { safeHtml, todayISO } from './utils.js';
+import { getCurrentTheme, getThemeColors } from './themes.js';
 
+
+function dk(){try{return getThemeColors(getCurrentTheme()).group==='dark';}catch(e){return false;}}
 export function render(container, usuario) {
   const t = (k) => tr('dash', k) || k;
   const isDark = usuario.tema === 'dark';
@@ -78,7 +81,7 @@ async function loadDashData(usuario) {
         if (latest) {
           const sorted = data.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 5);
           if (sorted.length === 0) {
-            latest.textContent = tr('shell', 'noData') || trFree('shell','noData');
+            latest.textContent = tr('shell', 'noData') || 'Sin datos';
           } else {
             latest.innerHTML = sorted.map(d =>
               `<div style="padding:4px 0;border-bottom:1px solid rgba(0,0,0,.05)">${safeHtml(d.matricula || '—')} · ${safeHtml(d.empresa || '—')} · ${safeHtml(d.fecha || '—')}</div>`
@@ -86,7 +89,7 @@ async function loadDashData(usuario) {
           }
         }
       }),
-      fsGetAll('referencias').then(data => {
+      fsGetAll('ingresos').then(data => {
         const el = document.getElementById('val-refs');
         if (el) el.textContent = data.filter(d => !recinto || d.recinto === recinto).length;
       }),
