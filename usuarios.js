@@ -5,6 +5,7 @@
 
 import { trFree, tr } from './langs.js';
 import { safeHtml, toast, nowLocal } from './utils.js';
+import { getCurrentTheme, getThemeColors } from './themes.js';
 
 const ALL_TABS = ['dash','ingresos','ingresos2','flota','conductores','agenda','analytics','analytics2','analytics3','analytics4','vehiculos','auditoria','recintos','usuarios','eventos','papelera','mensajes','impresion','empresas','migracion'];
 const ALL_PERMS = ['canAdd','canEdit','canDel','canExport','canImport','canPrint','canStatus','canSpecial','canCampos'];
@@ -15,7 +16,7 @@ export function render(c, u) { _c = c; _u = u; _data = []; paint(); loadData(); 
 function t(k) { return trFree('shell', k) || k; }
 
 function paint() {
-  const dk = _u.tema === 'dark', bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
+  const T = getThemeColors(); const dk = (T.group === 'dark'), bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
   _c.innerHTML = `
     <div style="max-width:1000px;margin:0 auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -56,7 +57,7 @@ function renderRows() {
   if (!tb) return;
   if (!_data.length) { tb.innerHTML = ''; if (em) em.style.display = 'block'; return; }
   if (em) em.style.display = 'none';
-  const dk = _u.tema === 'dark';
+  const T = getThemeColors(); const dk = (T.group === 'dark');
   tb.innerHTML = _data.map(d => `<tr style="border-top:1px solid ${dk ? '#334155' : '#f1f5f9'}">
     <td style="padding:8px 12px;font-weight:600">${safeHtml(d.nombre || '—')}</td>
     <td style="padding:8px 12px;font-size:11px">${safeHtml(d.email || '—')}</td>
@@ -75,7 +76,7 @@ function rolColor(r) {
 }
 
 function openModal(editId = null) {
-  const dk = _u.tema === 'dark', r = editId ? _data.find(d => d.id === editId) : {};
+  const T = getThemeColors(); const dk = (T.group === 'dark'), r = editId ? _data.find(d => d.id === editId) : {};
   const old = document.getElementById('beu-usr-modal'); if (old) old.remove();
   const m = document.createElement('div'); m.id = 'beu-usr-modal';
   m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8000;display:flex;align-items:center;justify-content:center;padding:16px';
