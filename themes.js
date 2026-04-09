@@ -58,3 +58,71 @@ export function setCurrentTheme(id) {
 export function getThemeColors(id) {
   return THEMES[id || getCurrentTheme()] || THEMES.linen;
 }
+
+// ── Module colors — contraste garantizado para módulos internos ──
+export function getModuleColors(themeId) {
+  var t = THEMES[themeId || getCurrentTheme()] || THEMES.linen;
+  var dk = t.group === 'dark';
+
+  // Garantizar contraste: texto siempre legible sobre su fondo
+  // Si sidebar es oscuro (corporate, brutalist, dark themes) → texto claro
+  // Si sidebar es claro → texto oscuro
+  function isLight(c) {
+    if (!c || c.indexOf('rgba') >= 0) return false;
+    var hex = c.replace('#', '');
+    if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+    var r = parseInt(hex.substring(0,2),16) || 0;
+    var g = parseInt(hex.substring(2,4),16) || 0;
+    var b = parseInt(hex.substring(4,6),16) || 0;
+    return (r * 299 + g * 587 + b * 114) / 1000 > 128;
+  }
+
+  var sbIsLight = isLight(t.sb);
+  var cardIsLight = isLight(t.card);
+  var bgIsLight = isLight(t.bg);
+
+  return {
+    // Panel backgrounds
+    panelBg:     t.card,
+    panelBg2:    t.bg,
+    toolbarBg:   t.card,
+    canvasBg:    t.bg,
+    inputBg:     dk ? (t.inp || t.card) : (t.inp || '#fff'),
+    modalBg:     t.card,
+    // Borders
+    border:      t.border,
+    borderLight: dk ? t.border : (t.border + '88'),
+    // Text — siempre con contraste contra su fondo
+    text:        t.text,
+    textMuted:   t.t3,
+    textOnPanel: cardIsLight ? (t.text.indexOf('#e') === 0 || t.text.indexOf('#f') === 0 ? '#1a1a2e' : t.text) : (t.text.indexOf('#0') === 0 || t.text.indexOf('#1') === 0 ? '#e8edf5' : t.text),
+    textOnSb:    t.sbText || (sbIsLight ? '#1e2431' : '#e8edf5'),
+    textOnBg:    bgIsLight ? '#1e2431' : '#e8edf5',
+    textOnAcc:   '#fff',
+    // Labels/muted — contraste mínimo garantizado
+    labelOnPanel:cardIsLight ? '#6b7a90' : '#8a95aa',
+    labelOnSb:   sbIsLight ? '#6b7a90' : '#7a8fa8',
+    labelOnBg:   bgIsLight ? '#6b7a90' : '#7a8fa8',
+    // Accent
+    accent:      t.acc,
+    accentBg:    t.accBg,
+    // Buttons — fondo legible
+    btnBg:       t.card,
+    btnBorder:   t.border,
+    btnText:     cardIsLight ? (dk ? '#333' : t.text) : (t.t3 || '#8a95aa'),
+    btnActiveBg: t.acc,
+    btnActiveText:'#fff',
+    // Input text — siempre legible
+    inputText:   dk ? '#e8edf5' : '#1a1a2e',
+    inputBorder: t.border,
+    // Sidebar
+    sbBg:        t.sb,
+    sbText:      t.sbText || (sbIsLight ? '#1e2431' : '#e8edf5'),
+    sbMuted:     sbIsLight ? '#6b7a90' : '#7a8fa8',
+    // Status
+    isDark:      dk,
+    group:       t.group,
+    // Raw
+    _raw: t
+  };
+}
