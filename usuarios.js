@@ -5,21 +5,17 @@
 
 import { trFree, tr } from './langs.js';
 import { safeHtml, toast, nowLocal } from './utils.js';
-import { getCurrentTheme, getThemeColors } from './themes.js';
 
 const ALL_TABS = ['dash','ingresos','ingresos2','flota','conductores','agenda','analytics','analytics2','analytics3','analytics4','vehiculos','auditoria','recintos','usuarios','eventos','papelera','mensajes','impresion','empresas','migracion'];
 const ALL_PERMS = ['canAdd','canEdit','canDel','canExport','canImport','canPrint','canStatus','canSpecial','canCampos'];
 
-
-function _isDark(){try{return getThemeColors(getCurrentTheme()).group==='dark';}catch(e){return false;}}
-const C=()=>{try{const t=getThemeColors(getCurrentTheme());return{bg:t.bg,card:t.card,bg2:t.inp||t.bg,border:t.border,text:t.text,t3:t.t3,blue:t.acc,bll:t.accBg,green:t.green||'#0d9f6e',red:t.red||'#dc2626',amber:t.amber||'#d97706',purple:t.purple||'#7c3aed',inp:t.inp||t.bg};}catch(e){return{bg:'#fff',card:'#fff',bg2:'#f8fafc',border:'#e2e8f0',text:'#0f172a',t3:'#64748b',blue:'#2563eb',bll:'#eff6ff',green:'#0d9f6e',red:'#dc2626',amber:'#d97706',purple:'#7c3aed',inp:'#f8fafc'};}};
 let _c, _u, _data = [];
 
 export function render(c, u) { _c = c; _u = u; _data = []; paint(); loadData(); return () => {}; }
 function t(k) { return trFree('shell', k) || k; }
 
 function paint() {
-  const _dk = dk(), bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
+  const dk = _u.tema === 'dark', bg = dk ? '#1e293b' : '#fff', bd = dk ? '#334155' : '#e2e8f0';
   _c.innerHTML = `
     <div style="max-width:1000px;margin:0 auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -60,7 +56,7 @@ function renderRows() {
   if (!tb) return;
   if (!_data.length) { tb.innerHTML = ''; if (em) em.style.display = 'block'; return; }
   if (em) em.style.display = 'none';
-  const _dk = dk();
+  const dk = _u.tema === 'dark';
   tb.innerHTML = _data.map(d => `<tr style="border-top:1px solid ${dk ? '#334155' : '#f1f5f9'}">
     <td style="padding:8px 12px;font-weight:600">${safeHtml(d.nombre || '—')}</td>
     <td style="padding:8px 12px;font-size:11px">${safeHtml(d.email || '—')}</td>
@@ -79,7 +75,7 @@ function rolColor(r) {
 }
 
 function openModal(editId = null) {
-  const _dk = dk(), r = editId ? _data.find(d => d.id === editId) : {};
+  const dk = _u.tema === 'dark', r = editId ? _data.find(d => d.id === editId) : {};
   const old = document.getElementById('beu-usr-modal'); if (old) old.remove();
   const m = document.createElement('div'); m.id = 'beu-usr-modal';
   m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8000;display:flex;align-items:center;justify-content:center;padding:16px';

@@ -244,7 +244,7 @@ function openModal(editId=null){
     if(!fd.matricula){toast('Matrícula requerida','#ef4444');return;}
     fd.matricula=normPlate(fd.matricula);
     const dup=!editId&&_data.find(d=>normPlate(d.matricula)===fd.matricula&&d.estado!=='SALIDA');
-    if(dup&&!confirm(\`⚠️ Matrícula \${fd.matricula} ya está en recinto (Pos #\${dup.pos||'?'}). ¿Crear otro registro?\`))return;
+    if(dup&&!confirm(`⚠️ Matrícula ${fd.matricula} ya está en recinto (Pos #${dup.pos||'?'}).  ¿Crear otro registro?`))return;
     if(!editId){if(fd.pos){fd.pos=parseInt(fd.pos)||nextPos(_data);}else if(_posAuto){fd.pos=nextPos(_data);}else{fd.pos=nextPos(_data);}}
     try{
       if(editId){const{fsUpdate}=await import('./firestore.js');await fsUpdate(`${COLL}/${editId}`,fd);_log('edit',fd.matricula,'Edición');}
