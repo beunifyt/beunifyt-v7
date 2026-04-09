@@ -589,22 +589,20 @@ function _updatePropsPanel(k) {
 
 function _setTheme(themeId) {
   if (_THEMES.indexOf(themeId) < 0) return;
+  // Save current layout state before re-render
+  var cfg = _cfgCache[_ck];
+  if (cfg) { cfg.fieldLayout = { ..._placed }; _saveCfg(_ck, cfg); }
   _currentTheme = themeId;
   _saveThemePref(themeId);
-  var ss = document.getElementById("impThemeCSS");
-  if (ss) ss.textContent = _getThemeCSS();
-  var pk = document.getElementById("impThemePicker");
-  if (pk) {
-    pk.querySelectorAll("button").forEach(function(b) {
-      var tid = _THEMES.find(function(t){ return b.textContent.trim() === _THEME_LABELS[t]; });
-      if (tid) {
-        var m = _mc();
-        var on = tid === themeId;
-        b.style.cssText = "padding:4px 12px;border-radius:20px;font-size:10px;font-weight:600;transition:all .2s;" + (on ? "background:#7c3aed;color:#fff;border-color:#7c3aed;box-shadow:0 2px 8px rgba(124,58,237,.3)" : "background:"+m.panelBg+";color:"+m.textMuted+";border:1px solid "+m.border);
-      }
-    });
+  // Full re-render since each theme has different HTML layout
+  var container = document.getElementById('impThemePicker');
+  if (container) container = container.parentElement;
+  if (container) {
+    _renderShell(container);
+    _finalizeGlobal();
+    _switchSub(_ck, true);
+    toast("Tema: " + _THEME_LABELS[themeId], "var(--blue)");
   }
-  toast("Tema: " + _THEME_LABELS[themeId], m ? m.accent : "var(--blue)");
 }
 
 // ── Switch subtab ──────────────────────────────────────────────────
