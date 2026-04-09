@@ -106,7 +106,7 @@ function _getThemeCSS() {
     +".imp-tgl-t.on .th{left:13px}"
     +".imp-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:none;align-items:center;justify-content:center}"
     +".imp-modal{background:"+m.modalBg+";border:1px solid "+m.border+";border-radius:10px;padding:16px;min-width:320px;max-width:500px;box-shadow:0 8px 32px rgba(0,0,0,.2);color:"+m.text+"}"
-    +".imp-bentry{display:flex;align-items:center;gap:6px;padding:5px;border-radius:5px;border:1px solid "+m.border+";background:"+m.panelBg2+";margin-bottom:3px;color:"+m.text+"}";
+    +".imp-bentry{display:flex;align-items:center;gap:6px;padding:5px;border-radius:5px;border:1px solid "+m.border+";background:"+m.panelBg2+";margin-bottom:3px;color:"+m.text+"}"+".imp-ib-btn{background:none!important;border:none!important;cursor:pointer}.imp-ib-active{background:"+m.accent+"!important;color:#fff!important;box-shadow:0 2px 6px rgba(0,0,0,.2)}";
 
   // Layout-specific CSS
   if (s === 'dark') {
@@ -335,238 +335,158 @@ async function _deleteTpl(name) {
 // ── Punto de entrada público ───────────────────────────────────────
 
 // ── Render shell (estructura fija, no se re-renderiza) ─────────────
+// ── Render shell — 4 layouts diferentes ──────────────────────────
 function _renderShell(el) {
-  el.innerHTML = `
-<style id="impThemeCSS">${_getThemeCSS()}</style>
+  var s = _currentTheme;
+  // Shared HTML parts (used by all layouts)
+  var fontSel = `<select id="impSelFont" onchange="window._imp.setFont(this.value)" style="flex:1;font-size:10px;padding:2px 4px;border-radius:4px;border:.5px solid var(--border)">${FONT_LIST.map(f => `<option>${f}</option>`).join('')}</select>`;
+  var subtabs = `<button class="btn btn-xs btn-p" id="impTabIng1" onclick="window._imp.switchSub('ing1')">🔖 Ref</button><button class="btn btn-xs btn-gh" id="impTabIng2" onclick="window._imp.switchSub('ing2')">🚛 Ing</button><button class="btn btn-xs btn-gh" id="impTabAg" onclick="window._imp.switchSub('ag')">📅 Ag</button><button class="btn btn-xs btn-gh" id="impTabEmb" onclick="window._imp.switchSub('emb')">📦 Emb</button>`;
+  var paperRow = `<span style="font-size:9px;font-weight:700;text-transform:uppercase;width:30px">Papel</span><div id="impPaperBtns" style="display:flex;gap:2px"></div><div class="imp-sep"></div><button id="impModeBtn" class="btn btn-xs btn-gh" onclick="window._imp.toggleMode()">📄 Normal</button><div class="imp-sep"></div><button id="impRotBtn" class="btn btn-xs btn-gh" onclick="window._imp.toggleRotation()">↕ Vertical</button>`;
+  var zoomRow = `<span style="font-size:9px;font-weight:700;text-transform:uppercase;white-space:nowrap">Zoom</span><input type="range" id="impZoomSlider" min="20" max="200" value="100" style="flex:1;height:3px;padding:0;border:none" oninput="window._imp.setZoom(this.value)"><span id="impZoomLbl" style="font-size:9px;min-width:30px;text-align:right">100%</span><button class="btn btn-xs btn-gh" onclick="window._imp.setZoom('auto')" style="padding:1px 5px;font-size:9px">Auto</button>`;
+  var copiasRow = `<span style="font-size:9px;font-weight:700;text-transform:uppercase;white-space:nowrap">Copias</span><div style="display:flex;gap:2px" id="impCopyBtns"></div><span id="impCopiasLbl" style="font-size:9px;font-weight:700"></span>`;
+  var qrSec = `<div class="imp-sec"><div class="imp-sec-hdr">QR Tracking<div class="imp-tgl" onclick="window._imp.toggleQR()"><div id="impQrTrack" class="imp-tgl-t"><div class="th"></div></div><span id="impQrLbl" style="font-size:9px;font-weight:700">OFF</span></div><button class="btn btn-xs btn-gh" onclick="window._imp.addSpecialChip('_qr')" style="padding:1px 5px;font-size:9px;margin-left:3px">+</button></div></div>`;
+  var camposSec = `<div class="imp-sec"><div class="imp-sec-hdr" style="cursor:pointer" onclick="window._imp.toggleFields()">Campos <span style="flex:1"></span><span id="impFldArrow">▸</span></div><div id="impFldBody" style="display:none;flex-direction:column;padding:3px 5px 5px;max-height:240px;overflow-y:auto"><div id="impPalette"></div></div></div>`;
+  var guiaSec = `<div class="imp-sec"><div class="imp-sec-hdr">Imagen guía <span style="font-size:8px;font-weight:400;text-transform:none;margin-left:3px">no se imprime</span></div><div style="padding:5px 6px"><div style="border:1.5px dashed var(--border);border-radius:4px;padding:5px;text-align:center;cursor:pointer;font-size:10px" onclick="document.getElementById('impBgInput').click()">🗺 Subir imagen de guía<input type="file" id="impBgInput" accept="image/*" style="display:none" onchange="window._imp.loadBG(this)"></div><div style="display:flex;align-items:center;gap:4px;margin-top:4px"><span style="font-size:9px">Opac:</span><input type="range" id="impBgOp" min="5" max="80" value="35" step="5" style="flex:1;height:3px;padding:0;border:none" oninput="window._imp.setBGOpacity(this.value)"><span id="impBgOpLbl" style="font-size:9px;min-width:22px">35%</span><button class="btn btn-xs btn-gh" onclick="window._imp.clearBG()" style="padding:1px 4px;font-size:9px">✕</button></div></div></div>`;
+  var tplSave = `<div style="border-top:.5px solid var(--border);padding-top:5px"><div id="impTplConfirm" style="display:none;background:#fffbeb;border:.5px solid #fde68a;border-radius:4px;padding:5px;margin-bottom:4px;font-size:10px"><div style="font-weight:700;margin-bottom:3px">¿Confirmar guardado?</div><div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px"><span id="impTplFmt" style="background:var(--blue);color:#fff;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700"></span><span id="impTplSz" style="padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700"></span><span id="impTplNm" style="padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700"></span></div><div style="display:flex;gap:3px"><button class="btn btn-xs btn-gh" style="flex:1" onclick="document.getElementById('impTplConfirm').style.display='none'">Cancelar</button><button class="btn btn-xs btn-p" style="flex:1;background:#7950f2;border-radius:20px" onclick="window._imp.confirmSaveTpl()">💾 Guardar</button></div></div><div style="display:flex;gap:3px"><input id="impTplName" placeholder="Nombre plantilla..." style="flex:1;font-size:10px;padding:3px 6px;border:.5px solid var(--border);border-radius:4px"><button class="btn btn-xs" style="background:#7950f2;color:#fff;border-radius:20px" onclick="window._imp.preSaveTpl()">💾</button></div></div>`;
+  var actionBtns = `<div style="display:flex;gap:2px;flex-wrap:wrap"><button class="btn btn-xs btn-gh" onclick="window._imp.exportCanvas()">📦 Export</button><button class="btn btn-xs btn-gh" onclick="document.getElementById('impImportFile').click()">📥 Import</button><input type="file" id="impImportFile" accept=".json" style="display:none" onchange="window._imp.importCanvas(this)"><button class="btn btn-xs btn-gh" onclick="window._imp.openBatch()">🗂 Lotes</button><button class="btn btn-xs btn-gh" onclick="window._imp.autoLayout()">⚡ Auto</button></div>`;
 
-${_buildPicker()}
+  // Toolbar buttons (shared)
+  var tbBtns = `<button class="btn btn-xs btn-p" onclick="window._imp.resizeSel(1)">A+</button><button class="btn btn-xs btn-p" onclick="window._imp.resizeSel(5)">A++</button><button class="btn btn-xs btn-p" onclick="window._imp.resizeSel(-1)">A−</button><div class="imp-sep"></div>`
+    +`<button id="impBtnBold" class="btn btn-xs btn-gh" onclick="window._imp.toggleStyle('bold')"><b>B</b></button><button id="impBtnItalic" class="btn btn-xs btn-gh" onclick="window._imp.toggleStyle('italic')"><i>I</i></button><button id="impBtnUnder" class="btn btn-xs btn-gh" onclick="window._imp.toggleStyle('underline')"><u>U</u></button><div class="imp-sep"></div>`
+    +`<button id="impBtnAlL" class="btn btn-xs btn-gh" onclick="window._imp.setAlign('left')"><svg width="11" height="9" viewBox="0 0 11 9"><line x1="0" y1="1" x2="11" y2="1" stroke="currentColor" stroke-width="1.5"/><line x1="0" y1="4" x2="7" y2="4" stroke="currentColor" stroke-width="1.5"/><line x1="0" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.5"/></svg></button>`
+    +`<button id="impBtnAlC" class="btn btn-xs btn-gh" onclick="window._imp.setAlign('center')"><svg width="11" height="9" viewBox="0 0 11 9"><line x1="0" y1="1" x2="11" y2="1" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="4" x2="9" y2="4" stroke="currentColor" stroke-width="1.5"/><line x1="0" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.5"/></svg></button>`
+    +`<button id="impBtnAlR" class="btn btn-xs btn-gh" onclick="window._imp.setAlign('right')"><svg width="11" height="9" viewBox="0 0 11 9"><line x1="0" y1="1" x2="11" y2="1" stroke="currentColor" stroke-width="1.5"/><line x1="4" y1="4" x2="11" y2="4" stroke="currentColor" stroke-width="1.5"/><line x1="0" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.5"/></svg></button><div class="imp-sep"></div>`
+    +`<div style="position:relative;display:inline-flex"><button class="btn btn-xs btn-gh" onclick="document.getElementById('impCpTxt').click()" style="gap:2px"><span id="impCpTxtPrev" style="width:10px;height:10px;border-radius:2px;background:#000;border:1px solid var(--border2);display:inline-block"></span>Txt</button><input type="color" id="impCpTxt" value="#000000" style="position:absolute;opacity:0;width:1px;height:1px" onchange="window._imp.setColor(this.value)"></div>`
+    +`<div style="position:relative;display:inline-flex"><button class="btn btn-xs btn-gh" onclick="document.getElementById('impCpBg').click()" style="gap:2px"><span id="impCpBgPrev" style="width:10px;height:10px;border-radius:2px;background:#eef2ff;border:1px solid var(--border2);display:inline-block"></span>Fondo</button><input type="color" id="impCpBg" value="#eef2ff" style="position:absolute;opacity:0;width:1px;height:1px" onchange="window._imp.setBgColor(this.value)"></div><div class="imp-sep"></div>`
+    +`<button id="impBtnBorder" class="btn btn-xs btn-gh" onclick="window._imp.toggleBorder()">▭ Borde</button><div style="position:relative;display:inline-flex"><button class="btn btn-xs btn-gh" onclick="document.getElementById('impCpBorder').click()"><span id="impCpBorderPrev" style="width:10px;height:10px;border-radius:2px;border:2px solid #3b5bdb;display:inline-block;background:transparent"></span></button><input type="color" id="impCpBorder" value="#3b5bdb" style="position:absolute;opacity:0;width:1px;height:1px" onchange="window._imp.setBorderColor(this.value)"></div><div class="imp-sep"></div>`
+    +`<button id="impLineBtn" class="btn btn-xs btn-gh" onclick="window._imp.toggleLineSel()">✏ Línea</button><button id="impLockBtn" class="btn btn-xs btn-gh" onclick="window._imp.toggleLock()">🔓</button><button id="impLblBtn" class="btn btn-xs btn-gh" onclick="window._imp.toggleLabelMode()">📋 Etiq+Val</button><div class="imp-sep"></div>`
+    +`<button class="btn btn-xs btn-gh" onclick="window._imp.undo()">↩</button><button class="btn btn-xs btn-gh" onclick="window._imp.redo()">↪</button><div class="imp-sep"></div>`
+    +`<button class="btn btn-xs btn-gh" onclick="window._imp.doPreview()">👁 Preview</button><button class="btn btn-xs" style="background:#7c3aed;color:#fff;border-radius:20px" onclick="window._imp.openPrintDialog()">🖨 Imprimir…</button><button class="btn btn-xs btn-gh" onclick="window._imp.clearAll()">🗑 Limpiar</button><span style="flex:1"></span><button class="btn btn-xs" style="background:#7c3aed;color:#fff;border-radius:20px" onclick="window._imp.resetDia0()">🔄 Día 0</button>`;
+
+  // Canvas area (shared by all)
+  var canvasHTML = `<div id="impCvArea"><div id="impPvWrap"><div id="impPv" ondragover="event.preventDefault()" ondrop="window._imp.onDrop(event)" onclick="window._imp.onPvClick(event)"><img id="impBgImg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;display:none;opacity:.35"><div id="impCutLine" style="position:absolute;left:0;right:0;top:50%;height:2px;background:#000;pointer-events:none;z-index:6;display:none"></div><div class="imp-gh" id="impGH"></div><div class="imp-gv" id="impGV"></div></div></div></div>`;
+  var statusBar = `<div id="impStatus"><span id="impSelInfo" style="flex:1">← selecciona un campo en la ficha</span><span id="impScaleInfo" style="font-size:9px"></span></div>`;
+  var bottomBar = `<div id="impCvBottom">Guía azul = alineación horizontal · Roja = vertical · Se muestran al arrastrar</div>`;
+
+  // Modals (shared)
+  var modals = `<div id="impPrintModal" class="imp-modal-bg"><div class="imp-modal" style="min-width:380px"><div style="font-size:14px;font-weight:700;margin-bottom:8px">🖨 Seleccionar formatos a imprimir</div><div id="impPrintTplList" style="display:flex;flex-direction:column;gap:4px;max-height:240px;overflow-y:auto;margin-bottom:10px"></div><div style="display:flex;gap:4px;align-items:center;margin-bottom:10px"><span style="font-size:11px;font-weight:600">Datos:</span><button class="btn btn-xs btn-p" onclick="window._imp.setPrintData('demo')" id="impPdDemo">Demo</button><button class="btn btn-xs btn-gh" onclick="window._imp.setPrintData('last')" id="impPdLast">Último ingreso</button><span id="impPrintDataLbl" style="font-size:10px;margin-left:4px">Demo</span></div><div style="display:flex;gap:4px;justify-content:flex-end"><button class="btn btn-sm btn-gh" onclick="window._imp.closeModal('impPrintModal')">Cancelar</button><button class="btn btn-sm" style="background:#7c3aed;color:#fff;border-radius:20px" onclick="window._imp.execPrint()">🖨 Imprimir seleccionados</button></div></div></div>`
+    +`<div id="impBatchModal" class="imp-modal-bg"><div class="imp-modal" style="min-width:420px"><div style="font-size:14px;font-weight:700;margin-bottom:8px">🗂 Impresión por lotes</div><div id="impBatchEntries" style="display:flex;flex-direction:column;gap:3px;max-height:220px;overflow-y:auto;margin-bottom:8px"></div><div style="display:flex;gap:4px;margin-bottom:10px"><input id="impBatchMat" placeholder="Matrícula" style="flex:1;font-size:11px"><input id="impBatchNom" placeholder="Nombre" style="flex:1;font-size:11px"><button class="btn btn-xs btn-p" onclick="window._imp.addBatchEntry()">+ Añadir</button></div><div style="font-size:11px;margin-bottom:8px">Formato activo del canvas. <span id="impBatchCount">0 entradas</span></div><div style="display:flex;gap:4px;justify-content:flex-end"><button class="btn btn-sm btn-gh" onclick="window._imp.closeModal('impBatchModal')">Cancelar</button><button class="btn btn-sm" style="background:#16a34a;color:#fff;border-radius:20px" onclick="window._imp.execBatch()">🗂 Imprimir todos</button></div></div></div>`;
+
+  // ═══ LAYOUT A: CLASSIC — original layout ═══
+  if (s === 'classic') {
+    el.innerHTML = `<style id="impThemeCSS">${_getThemeCSS()}</style>${_buildPicker()}
 <div id="impWrap">
-  <!-- ══ PANEL IZQUIERDO ══ -->
   <div id="impLeft">
-    <!-- Subtabs -->
-    <div style="display:flex;gap:3px">
-      <button class="btn btn-xs btn-p"  id="impTabIng1" onclick="window._imp.switchSub('ing1')">🔖 Ref</button>
-      <button class="btn btn-xs btn-gh" id="impTabIng2" onclick="window._imp.switchSub('ing2')">🚛 Ing</button>
-      <button class="btn btn-xs btn-gh" id="impTabAg"   onclick="window._imp.switchSub('ag')">📅 Ag</button>
-      <button class="btn btn-xs btn-gh" id="impTabEmb"  onclick="window._imp.switchSub('emb')">📦 Emb</button>
-    </div>
-    <!-- Fuente -->
-    <div style="display:flex;align-items:center;gap:4px">
-      <span style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;white-space:nowrap">Fuente</span>
-      <select id="impSelFont" onchange="window._imp.setFont(this.value)" style="flex:1;font-size:10px;padding:2px 4px;border-radius:4px;border:.5px solid var(--border)">
-        ${FONT_LIST.map(f => `<option>${f}</option>`).join('')}
-      </select>
-    </div>
-    <!-- Papel + Modo -->
-    <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
-      <span style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;width:30px">Papel</span>
-      <div id="impPaperBtns" style="display:flex;gap:2px"></div>
-      <div class="imp-sep"></div>
-      <button id="impModeBtn" class="btn btn-xs btn-gh" onclick="window._imp.toggleMode()" title="Normal / Troquelado">📄 Normal</button>
-      <div class="imp-sep"></div>
-      <button id="impRotBtn" class="btn btn-xs btn-gh" onclick="window._imp.toggleRotation()" title="Vertical / Horizontal">↕ Vertical</button>
-    </div>
-    <!-- Zoom -->
-    <div style="display:flex;align-items:center;gap:4px">
-      <span style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;white-space:nowrap">Zoom</span>
-      <input type="range" id="impZoomSlider" min="20" max="200" value="100" style="flex:1;height:3px;padding:0;border:none" oninput="window._imp.setZoom(this.value)">
-      <span id="impZoomLbl" style="font-size:9px;min-width:30px;text-align:right">100%</span>
-      <button class="btn btn-xs btn-gh" onclick="window._imp.setZoom('auto')" style="padding:1px 5px;font-size:9px">Auto</button>
-    </div>
-    <!-- Copias -->
-    <div style="display:flex;align-items:center;gap:4px">
-      <span style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;white-space:nowrap">Copias</span>
-      <div style="display:flex;gap:2px" id="impCopyBtns"></div>
-      <span id="impCopiasLbl" style="font-size:9px;color:var(--blue);font-weight:700"></span>
-    </div>
-    <!-- QR Tracking -->
-    <div class="imp-sec">
-      <div class="imp-sec-hdr">QR Tracking
-        <div class="imp-tgl" onclick="window._imp.toggleQR()">
-          <div id="impQrTrack" class="imp-tgl-t"><div class="th"></div></div>
-          <span id="impQrLbl" style="font-size:9px;font-weight:700;color:var(--text3)">OFF</span>
-        </div>
-        <button class="btn btn-xs btn-gh" id="impQrAddBtn" onclick="window._imp.addSpecialChip('_qr')" style="padding:1px 5px;font-size:9px;margin-left:3px">+</button>
-      </div>
-    </div>
-    <!-- Frases -->
-    <div id="impFrasesArea"></div>
-    <!-- Campos -->
-    <div class="imp-sec">
-      <div class="imp-sec-hdr" style="cursor:pointer" onclick="window._imp.toggleFields()">
-        Campos <span style="flex:1"></span><span id="impFldArrow">▸</span>
-      </div>
-      <div id="impFldBody" style="display:none;flex-direction:column;padding:3px 5px 5px;max-height:240px;overflow-y:auto">
-        <div id="impPalette"></div>
-      </div>
-    </div>
-    <!-- Imagen de guía -->
-    <div class="imp-sec">
-      <div class="imp-sec-hdr">Imagen guía
-        <span style="font-size:8px;font-weight:400;text-transform:none;margin-left:3px;color:var(--text3)">no se imprime</span>
-      </div>
-      <div style="padding:5px 6px">
-        <div style="border:1.5px dashed var(--border);border-radius:4px;padding:5px;text-align:center;cursor:pointer;font-size:10px;color:var(--text3)" onclick="document.getElementById('impBgInput').click()">
-          🗺 Subir imagen de guía
-          <input type="file" id="impBgInput" accept="image/*" style="display:none" onchange="window._imp.loadBG(this)">
-        </div>
-        <div style="display:flex;align-items:center;gap:4px;margin-top:4px">
-          <span style="font-size:9px">Opac:</span>
-          <input type="range" id="impBgOp" min="5" max="80" value="35" step="5" style="flex:1;height:3px;padding:0;border:none" oninput="window._imp.setBGOpacity(this.value)">
-          <span id="impBgOpLbl" style="font-size:9px;min-width:22px">35%</span>
-          <button class="btn btn-xs btn-gh" onclick="window._imp.clearBG()" style="padding:1px 4px;font-size:9px">✕</button>
-        </div>
-      </div>
-    </div>
-    <!-- Guardar plantilla -->
-    <div style="border-top:.5px solid var(--border);padding-top:5px">
-      <div id="impTplConfirm" style="display:none;background:var(--all,#fffbeb);border:.5px solid #fde68a;border-radius:4px;padding:5px;margin-bottom:4px;font-size:10px">
-        <div style="font-weight:700;margin-bottom:3px">¿Confirmar guardado?</div>
-        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px">
-          <span id="impTplFmt" style="background:var(--blue);color:#fff;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700"></span>
-          <span id="impTplSz"  style="background:var(--bg4);color:var(--text);padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700"></span>
-          <span id="impTplNm"  style="background:var(--bg4);color:var(--text);padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700"></span>
-        </div>
-        <div style="display:flex;gap:3px">
-          <button class="btn btn-xs btn-gh" style="flex:1" onclick="document.getElementById('impTplConfirm').style.display='none'">Cancelar</button>
-          <button class="btn btn-xs btn-p" style="flex:1;background:#7950f2;border-radius:20px" onclick="window._imp.confirmSaveTpl()">💾 Guardar</button>
-        </div>
-      </div>
-      <div style="display:flex;gap:3px">
-        <input id="impTplName" placeholder="Nombre plantilla..." style="flex:1;font-size:10px;padding:3px 6px;border:.5px solid var(--border);border-radius:4px">
-        <button class="btn btn-xs" style="background:#7950f2;color:#fff;border-radius:20px" onclick="window._imp.preSaveTpl()">💾</button>
-      </div>
-    </div>
-    <!-- Acciones -->
-    <div style="display:flex;gap:2px;flex-wrap:wrap">
-      <button class="btn btn-xs btn-gh" onclick="window._imp.exportCanvas()" title="Exportar como JSON">📦 Export</button>
-      <button class="btn btn-xs btn-gh" onclick="document.getElementById('impImportFile').click()" title="Importar desde JSON">📥 Import</button>
-      <input type="file" id="impImportFile" accept=".json" style="display:none" onchange="window._imp.importCanvas(this)">
-      <button class="btn btn-xs btn-gh" onclick="window._imp.openBatch()" title="Impresión por lotes">🗂 Lotes</button>
-      <button class="btn btn-xs btn-gh" onclick="window._imp.autoLayout()" title="Auto-posicionar campos">⚡ Auto</button>
-    </div>
-    <!-- Lista plantillas -->
-    <div id="impTplList"></div>
+    <div style="display:flex;gap:3px">${subtabs}</div>
+    <div style="display:flex;align-items:center;gap:4px"><span style="font-size:9px;font-weight:700;text-transform:uppercase;white-space:nowrap">Fuente</span>${fontSel}</div>
+    <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap">${paperRow}</div>
+    <div style="display:flex;align-items:center;gap:4px">${zoomRow}</div>
+    <div style="display:flex;align-items:center;gap:4px">${copiasRow}</div>
+    ${qrSec}<div id="impFrasesArea"></div>${camposSec}${guiaSec}${tplSave}${actionBtns}<div id="impTplList"></div>
   </div>
-
-  <!-- ══ PANEL DERECHO ══ -->
   <div id="impRight">
-    <!-- Toolbar -->
-    <div id="impToolbar">
-      <button class="btn btn-xs btn-p" onclick="window._imp.resizeSel(1)">A+</button>
-      <button class="btn btn-xs btn-p" onclick="window._imp.resizeSel(5)">A++</button>
-      <button class="btn btn-xs btn-p" onclick="window._imp.resizeSel(-1)">A−</button>
-      <div class="imp-sep"></div>
-      <button id="impBtnBold"   class="btn btn-xs btn-gh" onclick="window._imp.toggleStyle('bold')"      title="Ctrl+B"><b>B</b></button>
-      <button id="impBtnItalic" class="btn btn-xs btn-gh" onclick="window._imp.toggleStyle('italic')"    title="Ctrl+I"><i>I</i></button>
-      <button id="impBtnUnder"  class="btn btn-xs btn-gh" onclick="window._imp.toggleStyle('underline')" title="Ctrl+U"><u>U</u></button>
-      <div class="imp-sep"></div>
-      <button id="impBtnAlL" class="btn btn-xs btn-gh" onclick="window._imp.setAlign('left')"   title="Ctrl+L">
-        <svg width="11" height="9" viewBox="0 0 11 9"><line x1="0" y1="1" x2="11" y2="1" stroke="currentColor" stroke-width="1.5"/><line x1="0" y1="4" x2="7" y2="4" stroke="currentColor" stroke-width="1.5"/><line x1="0" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>
-      </button>
-      <button id="impBtnAlC" class="btn btn-xs btn-gh" onclick="window._imp.setAlign('center')" title="Ctrl+E">
-        <svg width="11" height="9" viewBox="0 0 11 9"><line x1="0" y1="1" x2="11" y2="1" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="4" x2="9" y2="4" stroke="currentColor" stroke-width="1.5"/><line x1="0" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>
-      </button>
-      <button id="impBtnAlR" class="btn btn-xs btn-gh" onclick="window._imp.setAlign('right')"  title="Ctrl+R">
-        <svg width="11" height="9" viewBox="0 0 11 9"><line x1="0" y1="1" x2="11" y2="1" stroke="currentColor" stroke-width="1.5"/><line x1="4" y1="4" x2="11" y2="4" stroke="currentColor" stroke-width="1.5"/><line x1="0" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>
-      </button>
-      <div class="imp-sep"></div>
-      <div style="position:relative;display:inline-flex">
-        <button class="btn btn-xs btn-gh" onclick="document.getElementById('impCpTxt').click()" style="gap:2px">
-          <span id="impCpTxtPrev" style="width:10px;height:10px;border-radius:2px;background:#000;border:1px solid var(--border2);display:inline-block;flex-shrink:0"></span>Txt
-        </button>
-        <input type="color" id="impCpTxt" value="#000000" style="position:absolute;opacity:0;width:1px;height:1px" onchange="window._imp.setColor(this.value)">
-      </div>
-      <div style="position:relative;display:inline-flex">
-        <button class="btn btn-xs btn-gh" onclick="document.getElementById('impCpBg').click()" style="gap:2px">
-          <span id="impCpBgPrev" style="width:10px;height:10px;border-radius:2px;background:#eef2ff;border:1px solid var(--border2);display:inline-block;flex-shrink:0"></span>Fondo
-        </button>
-        <input type="color" id="impCpBg" value="#eef2ff" style="position:absolute;opacity:0;width:1px;height:1px" onchange="window._imp.setBgColor(this.value)">
-      </div>
-      <div class="imp-sep"></div>
-      <button id="impBtnBorder" class="btn btn-xs btn-gh" onclick="window._imp.toggleBorder()" title="Borde">▭ Borde</button>
-      <div style="position:relative;display:inline-flex">
-        <button class="btn btn-xs btn-gh" onclick="document.getElementById('impCpBorder').click()" title="Color borde">
-          <span id="impCpBorderPrev" style="width:10px;height:10px;border-radius:2px;border:2px solid #3b5bdb;display:inline-block;background:transparent"></span>
-        </button>
-        <input type="color" id="impCpBorder" value="#3b5bdb" style="position:absolute;opacity:0;width:1px;height:1px" onchange="window._imp.setBorderColor(this.value)">
-      </div>
-      <div class="imp-sep"></div>
-      <button id="impLineBtn" class="btn btn-xs btn-gh" onclick="window._imp.toggleLineSel()" title="Línea bajo campo">✏ Línea</button>
-      <button id="impLockBtn" class="btn btn-xs btn-gh" onclick="window._imp.toggleLock()"    title="Bloquear campo">🔓</button>
-      <button id="impLblBtn"  class="btn btn-xs btn-gh" onclick="window._imp.toggleLabelMode()">📋 Etiq+Val</button>
-      <div class="imp-sep"></div>
-      <button class="btn btn-xs btn-gh" onclick="window._imp.undo()" title="Ctrl+Z">↩</button>
-      <button class="btn btn-xs btn-gh" onclick="window._imp.redo()" title="Ctrl+Y">↪</button>
-      <div class="imp-sep"></div>
-      <button class="btn btn-xs btn-gh" onclick="window._imp.doPreview()" title="Vista previa">👁 Preview</button>
-      <button class="btn btn-xs" style="background:#7c3aed;color:#fff;border-radius:20px" onclick="window._imp.openPrintDialog()">🖨 Imprimir…</button>
-      <button class="btn btn-xs btn-gh" onclick="window._imp.clearAll()">🗑 Limpiar</button>
-      <span style="flex:1"></span>
-      <button class="btn btn-xs" style="background:#7c3aed;color:#fff;border-radius:20px" onclick="window._imp.resetDia0()">🔄 Día 0</button>
+    <div id="impToolbar">${tbBtns}</div>${statusBar}${canvasHTML}${bottomBar}
+  </div>
+</div>${modals}`;
+  }
+
+  // ═══ LAYOUT B: DARK STUDIO — sidebar compacto, chips redondeados ═══
+  else if (s === 'dark') {
+    el.innerHTML = `<style id="impThemeCSS">${_getThemeCSS()}</style>${_buildPicker()}
+<div id="impWrap">
+  <div id="impLeft">
+    <div style="display:flex;flex-wrap:wrap;gap:3px">${subtabs}</div>
+    <div class="imp-sec"><div class="imp-sec-hdr">Formato</div><div style="padding:6px">
+      <div style="display:flex;gap:3px;margin-bottom:4px"><div id="impPaperBtns" style="display:flex;gap:3px"></div></div>
+      <div style="display:flex;gap:3px"><button id="impModeBtn" class="btn btn-xs btn-gh" onclick="window._imp.toggleMode()">📄 Normal</button><button id="impRotBtn" class="btn btn-xs btn-gh" onclick="window._imp.toggleRotation()">↕ Vertical</button></div>
+    </div></div>
+    <div class="imp-sec"><div class="imp-sec-hdr">Tipografía</div><div style="padding:6px">${fontSel}</div></div>
+    <div style="display:flex;align-items:center;gap:4px;padding:2px 0">${zoomRow}</div>
+    <div style="display:flex;align-items:center;gap:4px;padding:2px 0">${copiasRow}</div>
+    ${qrSec}<div id="impFrasesArea"></div>${camposSec}${guiaSec}${tplSave}${actionBtns}<div id="impTplList"></div>
+  </div>
+  <div id="impRight">
+    <div id="impToolbar">${tbBtns}</div>${statusBar}${canvasHTML}${bottomBar}
+  </div>
+</div>${modals}`;
+  }
+
+  // ═══ LAYOUT C: WARM EDITORIAL — icon bar lateral + panel campos separado ═══
+  else if (s === 'warm') {
+    el.innerHTML = `<style id="impThemeCSS">${_getThemeCSS()}</style>${_buildPicker()}
+<div id="impWrap">
+  <div id="impIconBar" style="width:48px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:3px;border-right:1px solid var(--border);background:var(--bg2)">
+    <button class="btn btn-xs imp-ib-btn imp-ib-active" onclick="window._imp._warmPanel('campos')" title="Campos" style="width:34px;height:34px;border-radius:8px;font-size:13px">📄</button>
+    <button class="btn btn-xs imp-ib-btn" onclick="window._imp._warmPanel('config')" title="Configuración" style="width:34px;height:34px;border-radius:8px;font-size:13px">⚙</button>
+    <button class="btn btn-xs imp-ib-btn" onclick="window._imp._warmPanel('frases')" title="Frases" style="width:34px;height:34px;border-radius:8px;font-size:13px">💬</button>
+    <button class="btn btn-xs imp-ib-btn" onclick="window._imp._warmPanel('imagen')" title="Imagen" style="width:34px;height:34px;border-radius:8px;font-size:13px">🖼</button>
+    <button class="btn btn-xs imp-ib-btn" onclick="window._imp._warmPanel('tpl')" title="Plantillas" style="width:34px;height:34px;border-radius:8px;font-size:13px">💾</button>
+    <div style="flex:1"></div>
+    <button class="btn btn-xs btn-gh" onclick="window._imp._warmPanel('config')" style="width:34px;height:34px;border-radius:8px;font-size:11px">cfg</button>
+  </div>
+  <div id="impLeft" style="width:200px;min-width:200px">
+    <div class="imp-sec-hdr" style="padding:8px 10px;font-size:11px">Campos disponibles</div>
+    <div id="impFldBody" style="display:flex;flex-direction:column;padding:3px 5px;flex:1;overflow-y:auto;max-height:none"><div id="impPalette"></div></div>
+    <div id="impWarmConfig" style="display:none">
+      <div style="display:flex;gap:3px;padding:6px">${subtabs}</div>
+      <div style="padding:4px 8px"><span style="font-size:9px;font-weight:700;text-transform:uppercase">Fuente</span>${fontSel}</div>
+      <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;padding:4px 8px">${paperRow}</div>
+      <div style="display:flex;align-items:center;gap:4px;padding:4px 8px">${zoomRow}</div>
+      <div style="display:flex;align-items:center;gap:4px;padding:4px 8px">${copiasRow}</div>
+      ${qrSec}
     </div>
-    <div id="impStatus">
-      <span id="impSelInfo" style="flex:1">← selecciona un campo en la ficha</span>
-      <span id="impScaleInfo" style="font-size:9px;color:var(--text3)"></span>
+    <div id="impWarmFrases" style="display:none"><div id="impFrasesArea"></div></div>
+    <div id="impWarmImagen" style="display:none">${guiaSec}</div>
+    <div id="impWarmTpl" style="display:none">${tplSave}${actionBtns}<div id="impTplList"></div></div>
+    <div style="border-top:1px solid var(--border);padding:6px 8px"><div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Plantillas</div><div id="impWarmTplMini" style="display:flex;gap:6px;overflow-x:auto;padding:2px 0"></div></div>
+  </div>
+  <div id="impRight">
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid var(--border);background:var(--bg2)">
+      <div style="display:none">${subtabs}</div>
+      <span style="flex:1"></span><span style="font-size:10px" id="impScaleInfo"></span>
     </div>
-    <!-- Canvas -->
-    <div id="impCvArea">
-      <div id="impPvWrap">
-        <div id="impPv"
-          ondragover="event.preventDefault()"
-          ondrop="window._imp.onDrop(event)"
-          onclick="window._imp.onPvClick(event)">
-          <img id="impBgImg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;display:none;opacity:.35">
-          <div id="impCutLine" style="position:absolute;left:0;right:0;top:50%;height:2px;background:#000;pointer-events:none;z-index:6;display:none"></div>
-          <div class="imp-gh" id="impGH"></div>
-          <div class="imp-gv" id="impGV"></div>
+    <div id="impToolbar">${tbBtns}</div>${statusBar}${canvasHTML}${bottomBar}
+  </div>
+</div>${modals}`;
+    // Show campos panel by default, hide Fld arrow since it's always open
+    setTimeout(function(){var a=document.getElementById('impFldArrow');if(a)a.style.display='none';},0);
+  }
+
+  // ═══ LAYOUT D: MODERN GLASS — panel propiedades a la derecha ═══
+  else if (s === 'glass') {
+    el.innerHTML = `<style id="impThemeCSS">${_getThemeCSS()}</style>${_buildPicker()}
+<div id="impWrap">
+  <div id="impLeft">
+    <div style="display:flex;gap:3px">${subtabs}</div>
+    <div style="padding:4px 0"><span style="font-size:9px;text-transform:uppercase;letter-spacing:1px;font-weight:500">Formato</span>
+      <div style="display:flex;gap:4px;margin:4px 0"><div id="impPaperBtns" style="display:flex;gap:3px"></div><div class="imp-sep"></div><button id="impRotBtn" class="btn btn-xs btn-gh" onclick="window._imp.toggleRotation()">↕</button><button id="impModeBtn" class="btn btn-xs btn-gh" onclick="window._imp.toggleMode()">📄</button></div>
+      ${fontSel}
+    </div>
+    <div style="display:flex;align-items:center;gap:4px">${zoomRow}</div>
+    <div style="display:flex;align-items:center;gap:4px">${copiasRow}</div>
+    ${qrSec}<div id="impFrasesArea"></div>${camposSec}${guiaSec}${tplSave}${actionBtns}<div id="impTplList"></div>
+  </div>
+  <div id="impRight" style="display:flex;flex-direction:row">
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+      <div id="impToolbar">${tbBtns}</div>${statusBar}${canvasHTML}${bottomBar}
+    </div>
+    <div id="impPropsPanel" style="width:170px;flex-shrink:0;border-left:1px solid var(--border);background:var(--bg2);overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px">
+      <div><div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;font-weight:500;margin-bottom:4px">Propiedades</div><div id="impPropsContent"><span style="font-size:9px;opacity:.5">Selecciona un campo</span></div></div>
+      <div><div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;font-weight:500;margin-bottom:4px">Color texto</div>
+        <div id="impPropsTxtColors" style="display:flex;gap:3px;flex-wrap:wrap">
+          ${['#000000','#333333','#667eea','#e53e3e','#2d5016','#7c3aed','#0369a1','#b45309'].map(c => `<div style="width:18px;height:18px;border-radius:4px;background:${c};border:1.5px solid var(--border);cursor:pointer" onclick="window._imp.setColor('${c}')"></div>`).join('')}
+        </div>
+      </div>
+      <div><div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;font-weight:500;margin-bottom:4px">Color fondo</div>
+        <div id="impPropsBgColors" style="display:flex;gap:3px;flex-wrap:wrap">
+          ${['rgba(235,245,255,.93)','#fef3c7','#dcfce7','#fce7f3','#ffffff','transparent'].map(c => `<div style="width:18px;height:18px;border-radius:4px;background:${c==='transparent'?'linear-gradient(45deg,#ccc 25%,transparent 25%,transparent 75%,#ccc 75%),linear-gradient(45deg,#ccc 25%,transparent 25%,transparent 75%,#ccc 75%)':c};background-size:6px 6px;background-position:0 0,3px 3px;border:1.5px solid var(--border);cursor:pointer" onclick="window._imp.setBgColor('${c}')"></div>`).join('')}
         </div>
       </div>
     </div>
-    <div id="impCvBottom">Guía azul = alineación horizontal · Roja = vertical · Se muestran al arrastrar</div>
   </div>
-</div>
+</div>${modals}`;
+  }
 
-<!-- ═══ PRINT DIALOG ═══ -->
-<div id="impPrintModal" class="imp-modal-bg">
-  <div class="imp-modal" style="min-width:380px">
-    <div style="font-size:14px;font-weight:700;margin-bottom:8px">🖨 Seleccionar formatos a imprimir</div>
-    <div id="impPrintTplList" style="display:flex;flex-direction:column;gap:4px;max-height:240px;overflow-y:auto;margin-bottom:10px"></div>
-    <div style="display:flex;gap:4px;align-items:center;margin-bottom:10px">
-      <span style="font-size:11px;font-weight:600">Datos:</span>
-      <button class="btn btn-xs btn-p"  onclick="window._imp.setPrintData('demo')" id="impPdDemo">Demo</button>
-      <button class="btn btn-xs btn-gh" onclick="window._imp.setPrintData('last')" id="impPdLast">Último ingreso</button>
-      <span id="impPrintDataLbl" style="font-size:10px;color:var(--text3);margin-left:4px">Demo</span>
-    </div>
-    <div style="display:flex;gap:4px;justify-content:flex-end">
-      <button class="btn btn-sm btn-gh" onclick="window._imp.closeModal('impPrintModal')">Cancelar</button>
-      <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border-radius:20px" onclick="window._imp.execPrint()">🖨 Imprimir seleccionados</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ BATCH MODAL ═══ -->
-<div id="impBatchModal" class="imp-modal-bg">
-  <div class="imp-modal" style="min-width:420px">
-    <div style="font-size:14px;font-weight:700;margin-bottom:8px">🗂 Impresión por lotes</div>
-    <div id="impBatchEntries" style="display:flex;flex-direction:column;gap:3px;max-height:220px;overflow-y:auto;margin-bottom:8px"></div>
-    <div style="display:flex;gap:4px;margin-bottom:10px">
-      <input id="impBatchMat" placeholder="Matrícula" style="flex:1;font-size:11px">
-      <input id="impBatchNom" placeholder="Nombre" style="flex:1;font-size:11px">
-      <button class="btn btn-xs btn-p" onclick="window._imp.addBatchEntry()">+ Añadir</button>
-    </div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:8px">
-      Formato activo del canvas. <span style="color:var(--blue);font-weight:600" id="impBatchCount">0 entradas</span>
-    </div>
-    <div style="display:flex;gap:4px;justify-content:flex-end">
-      <button class="btn btn-sm btn-gh" onclick="window._imp.closeModal('impBatchModal')">Cancelar</button>
-      <button class="btn btn-sm" style="background:#16a34a;color:#fff;border-radius:20px" onclick="window._imp.execBatch()">🗂 Imprimir todos</button>
-    </div>
-  </div>
-</div>
-`;
-
-  // Init copias buttons
   _setCopias(1);
 }
 
@@ -620,6 +540,7 @@ function _exposeGlobal() {
     onDrop:        (e) => _onDrop(e),
     onPvClick:     (e) => _onPvClick(e),
     setTheme:      (t) => _setTheme(t),
+    _warmPanel:    (p) => _warmPanel(p),
   };
 }
 
@@ -634,6 +555,36 @@ function _buildPicker() {
   });
   h += '</div>';
   return h;
+}
+
+function _warmPanel(panel) {
+  var panels = ['campos','config','frases','imagen','tpl'];
+  var show = {campos:'impFldBody',config:'impWarmConfig',frases:'impWarmFrases',imagen:'impWarmImagen',tpl:'impWarmTpl'};
+  panels.forEach(function(p){
+    var el = document.getElementById(show[p]);
+    if(el) el.style.display = (p===panel) ? 'flex' : 'none';
+  });
+  // Special: campos shows impFldBody directly
+  if(panel==='campos'){var fb=document.getElementById('impFldBody');if(fb)fb.style.display='flex';}
+  if(panel==='frases'){var fa=document.getElementById('impFrasesArea');if(fa&&!fa.parentElement.id){/* already in warm panel */}}
+  // Update icon bar active state
+  document.querySelectorAll('.imp-ib-btn').forEach(function(b,i){
+    b.classList.toggle('imp-ib-active', panels[i]===panel);
+  });
+}
+
+function _updatePropsPanel(k) {
+  if (_currentTheme !== 'glass') return;
+  var el = document.getElementById('impPropsContent'); if (!el) return;
+  if (!k || !_placed[k]) { el.innerHTML = '<span style="font-size:9px;opacity:.5">Selecciona un campo</span>'; return; }
+  var p = _placed[k], bk = k.replace(/_\d+$/, '');
+  var f = FIELDS.find(function(x){ return x.k === bk; }) || { l: k };
+  el.innerHTML = '<div style="margin-bottom:3px"><span style="font-size:9px;opacity:.6;width:50px;display:inline-block">Campo</span><span style="font-size:9px;font-weight:500">'+f.l+'</span></div>'
+    +'<div style="margin-bottom:3px"><span style="font-size:9px;opacity:.6;width:50px;display:inline-block">Tam.</span><span style="font-size:9px;font-weight:500">'+(p.fs||8)+'px</span></div>'
+    +'<div style="margin-bottom:3px"><span style="font-size:9px;opacity:.6;width:50px;display:inline-block">Pos.</span><span style="font-size:9px;font-weight:500">'+Math.round(p.x)+'%, '+Math.round(p.y)+'%</span></div>'
+    +'<div style="margin-bottom:3px"><span style="font-size:9px;opacity:.6;width:50px;display:inline-block">Ancho</span><span style="font-size:9px;font-weight:500">'+(p.w?Math.round(p.w)+'%':'auto')+'</span></div>'
+    +'<div style="margin-bottom:3px"><span style="font-size:9px;opacity:.6;width:50px;display:inline-block">Bold</span><span style="font-size:9px;font-weight:500">'+(p.bold?'Si':'No')+'</span></div>'
+    +'<div><span style="font-size:9px;opacity:.6;width:50px;display:inline-block">Alin.</span><span style="font-size:9px;font-weight:500">'+(p.align||'izquierda')+'</span></div>';
 }
 
 function _setTheme(themeId) {
@@ -922,7 +873,7 @@ function _chipDown(e) {
   if (_placed[k]?.locked) return;
   document.querySelectorAll('.imp-pfc').forEach(c => { c.classList.remove('pfc-sel'); c.style.boxShadow=''; });
   ch.classList.add('pfc-sel'); ch.style.boxShadow='0 0 0 2px rgba(59,91,219,.3)';
-  _selKey = k; _updateToolbarState(k);
+  _selKey = k; _updateToolbarState(k); _updatePropsPanel(k);
   const bk = k.replace(/_\d+$/, ''), f = FIELDS.find(x => x.k===bk) || {l:k};
   const p = _placed[k] || {};
   document.getElementById('impSelInfo').textContent = `${f.l} · ${p.fs||8}px · ${p.align||'izq'} · ${Math.round(_scale*100)}%`;
@@ -1013,7 +964,7 @@ function _onDrop(e) {
 function _onPvClick(e) {
   if (!e.target.closest('.imp-pfc')) {
     document.querySelectorAll('.imp-pfc').forEach(c => { c.classList.remove('pfc-sel'); c.style.boxShadow=''; });
-    _selKey = null;
+    _selKey = null; _updatePropsPanel(null);
     document.getElementById('impSelInfo').textContent = '← selecciona un campo en la ficha';
     const lb=document.getElementById('impLineBtn');if(lb){lb.style.background='';lb.style.color='';}
     const lk=document.getElementById('impLockBtn');if(lk){lk.textContent='🔓';lk.style.background='';}
@@ -1785,6 +1736,7 @@ function _finalizeGlobal() {
     _setCopias,_removeBatchEntry,
     setPaper: _setPaper,
     setTheme: _setTheme,
+    _warmPanel: _warmPanel,
   });
 }
 
